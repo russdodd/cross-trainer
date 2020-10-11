@@ -12,6 +12,11 @@ export class ScrambleComponent {
 
     public scramble:any = "";
     public solution:any = "";
+    private GetSolution:string = "Get Solution";
+    private HideSolution:string = "Hide Solution";
+
+    public SolButtonText:any = this.GetSolution;
+
 
     newScramble() {
         var MoveNames = ["R", "R2", "R'", "F", "F2", "F'", "L", "L2", "L'", "B", "B2", "B'", "U", "U2", "U'", "D", "D2", "D'"];
@@ -37,7 +42,17 @@ export class ScrambleComponent {
         return false;
     }
 
-    getSolution() {
+    toggleSolution() {
+        if (this.SolButtonText == this.HideSolution) {
+            this.SolButtonText = this.GetSolution;
+            this.solution = "";
+            return false
+        }
+        if (this.scramble == "") {
+            return false
+        }
+        this.SolButtonText = this.HideSolution;
+
         var scrambleArr = this.scramble.split(" ");
         console.log("scrambleArr: " + scrambleArr);
         var sols = cross.solve(scrambleArr.join(" "));
