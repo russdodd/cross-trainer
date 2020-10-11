@@ -1,0 +1,28 @@
+<ng-container>
+  <div class="wrap">
+    <a href="#" class="button" (click)="newScramble()">Get Scramble</a>
+  </div>
+  <div class="outder">
+  <h2 class="ritle">Scramble</h2>
+  <div class="scramble" ID="Output" STYLE="font-family:Helvetica, Arial; font-size:30pt">
+      <p>
+        <label id="scrambleText">
+            {{scramble}}
+        </label>
+      </p> 
+    </div>
+  </div>
+  <div class="wrap">
+    <a href="#" class="button" (click)="getSolution()">Get Solution</a>
+  </div>
+  <div class="outder">
+  <h2 class="ritle">Solution</h2>
+  <div class="scramble" ID="sol" STYLE="font-family:Helvetica, Arial; font-size:30pt">
+      <p>
+        <label id="solutionText">
+          {{solution}}
+        </label>
+      </p> 
+    </div>
+  </div>
+</ng-container>
