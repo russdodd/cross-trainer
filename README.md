@@ -1,6 +1,7 @@
 # CrossTrainer
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 10.1.6.
+Train your cross to bring down your speed cubing time.
+Generate a cross at a difficulty level of your choosing and get the optimal solution to help guide you.
 
 ## Development server
 
