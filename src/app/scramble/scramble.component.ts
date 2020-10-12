@@ -39,6 +39,7 @@ export class ScrambleComponent {
         
         this.scramble = TextScrambleWithSpaces;
         this.solution = "";
+        this.SolButtonText = this.GetSolution;
         return false;
     }
 

@@ -1,0 +1,11 @@
+version: '3.7'
+
+services:
+
+  example-prod:
+    container_name: cross-trainer
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '80:80'
