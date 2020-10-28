@@ -1,7 +1,13 @@
-# CrossTrainer
+# Cube Trainer
 
-Train your cross to bring down your speed cubing time.
+Train to bring down your speed cubing time.
+
+## Cross Trainer
+
 Generate a cross at a difficulty level of your choosing and get the optimal solution to help guide you.
+
+## Oll Two Sided Recognition Trainer
+Practice your recognization to shorten your recognition time.
 
 ## Development server
 
