@@ -1,0 +1,12 @@
+<p id="select-oll-title">Select Shape to Train</p>
+
+<form #myForm="ngForm" (submit)="submitForm(myForm)" novalidate>
+    <div id="select-oll"></div>
+    <ul>
+        <li *ngFor="let ollType of ollTypes">
+            <input [id]="ollType.name" type="radio" class="custom-control-input" [value]="ollType.name" name="select-oll-type" ngModel required>
+            <label class="custom-control-label" [for]="ollType.name">{{ ollType.name }}</label>
+        </li>
+        <button class="button" type="submit">Ok</button>
+    </ul>
+</form>

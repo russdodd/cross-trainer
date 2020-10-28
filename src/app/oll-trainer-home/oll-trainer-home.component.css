@@ -1,0 +1,18 @@
+ul.oll {
+    list-style-type: none;
+    margin: auto;
+    padding: 0;
+    padding-top: 10px;
+    overflow: hidden;
+    width: 70%;
+}
+
+li.oll {
+    display: inline;
+}
+
+li.oll a {
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}

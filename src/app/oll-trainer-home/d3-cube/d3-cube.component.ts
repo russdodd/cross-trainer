@@ -352,7 +352,7 @@ export class D3CubeComponent implements OnInit {
     var grid = d3.select("#grid")
       .append("svg")
       .attr("width","510px")
-      .attr("height","510px");
+      .attr("height","310px");
     const translateTop = 255;
     var row = grid.selectAll("#row_0")
       .data(gridData)
