@@ -6,10 +6,15 @@ import { Subject } from 'rxjs';
 })
 export class OllSelectedStateService {
   private ollTypeSource = new Subject<string>();
-
+  ollType:string = 'dot'
   ollType$ = this.ollTypeSource.asObservable();
 
-  sendOll(ollType: string){
+  setOll(ollType: string){
     this.ollTypeSource.next(ollType);
+    this.ollType = ollType;
+  }
+
+  getCurOll(): string {
+    return this.ollType
   }
 }

@@ -20,11 +20,10 @@ export class OllSelectPageComponent implements OnInit {
     }
   } 
   ngOnInit() {
-    
   }
 
   setOllType(ollType: string) {
-    this.ollStateService.sendOll(ollType);
+    this.ollStateService.setOll(ollType);
   }
   constructor(private ollStateService: OllSelectedStateService) {}
 }
