@@ -33,7 +33,9 @@ export class OllSelectedStateService {
   }
 
   getRandomOll(olls: string[]) {
-    return olls[this.getRandomInt(olls.length - 1)]
+    console.log("random num: " + this.getRandomInt(olls.length))
+    console.log("olls length: " + olls.length)
+    return olls[this.getRandomInt(olls.length)]
   }
 
   setOll(curOll: string){

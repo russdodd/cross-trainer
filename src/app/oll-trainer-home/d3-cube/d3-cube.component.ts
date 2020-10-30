@@ -32,7 +32,7 @@ export class D3CubeComponent implements OnInit {
   drawOll(): void {
     console.log("drawing oll")
     var newOll = this.ollStateService.drawNewOll()
-    var oll:OllAlg = OllAlgs.filter(elem => elem.name = newOll)[0]
+    var oll:OllAlg = OllAlgs.filter(elem => elem.name == newOll)[0]
     var algMoves: string[] = reverseAlg(oll.alg)
     this.initCube(this.colors, algMoves);
   }

@@ -21,7 +21,11 @@ export class CubeStateService {
     "f": parent => parent.rotateWideF(),
     "f'": parent => parent.rotateWideFPrime(),
     "M": parent => parent.rotateM(),
-    "M'": parent => parent.rotateMPrime()
+    "M'": parent => parent.rotateMPrime(),
+    "y": parent => parent.rotateY(),
+    "y'": parent => parent.rotateYPrime(),
+    "x": parent => parent.rotateX(),
+    "x'": parent => parent.rotateXPrime()
   }
   private cubeState:object = {}
   private cubeStateTemplate:object = {
@@ -185,23 +189,17 @@ export class CubeStateService {
 
   rotateR(): void {
     // rotate 'r'
-    this.printFace('u')
     this.cubeState['r'] = this.getClockwiseRotFace(this.cubeState["r"]);
-    this.printFace('u')
     
     // prior transformations to undo after
     this.cubeState['b'] = this.getClockwiseRotFace(this.cubeState["b"]);
     this.cubeState['f'] = this.getClockwiseRotFace(this.cubeState["f"]);
-    this.printFace('u')
     this.cubeState['u'] = this.getClockwiseRotFace(this.cubeState["u"]);
-    this.printFace('u')
     this.cubeState['d'] = this.getClockwiseRotFace(this.cubeState["d"]);
 
     // switch around the arrays
     var temp = this.deepCopy(this.cubeState['u'][0])
-    this.printFace('u')
     this.cubeState['u'][0] = this.deepCopy(this.cubeState['f'][0])
-    this.printFace('u')
     this.cubeState['f'][0] = this.deepCopy(this.cubeState['d'][0])
     this.cubeState['d'][0] = this.deepCopy(this.cubeState['b'][2])
     this.cubeState['d'][0].reverse()
@@ -211,9 +209,7 @@ export class CubeStateService {
     // undo prior transformations
     this.cubeState['b'] = this.getAnticlockwiseRotFace(this.cubeState["b"]);
     this.cubeState['f'] = this.getAnticlockwiseRotFace(this.cubeState["f"]);
-    this.printFace('u')
     this.cubeState['u'] = this.getAnticlockwiseRotFace(this.cubeState["u"]);
-    this.printFace('u')
     this.cubeState['d'] = this.getAnticlockwiseRotFace(this.cubeState["d"]);
   }
 
@@ -359,9 +355,9 @@ export class CubeStateService {
     var moveFuncs = moves.map(elem => this.rotations[elem])
     console.log(moveFuncs)
     moveFuncs.forEach(move => {
-      console.log("***\nmove\n***")
+      // console.log("***\nmove\n***")
       move(this);
-      this.printCubeFaces()
+      // this.printCubeFaces()
     });
   }
 
