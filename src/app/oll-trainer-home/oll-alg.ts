@@ -3,4 +3,5 @@ export interface OllAlg {
     name: string;
     src: string;
     type: string;
+    alg: string;
   }

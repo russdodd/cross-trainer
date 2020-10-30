@@ -1,5 +1,9 @@
 import * as d3 from 'd3';
 import { Component, OnInit } from '@angular/core';
+import { OllSelectedStateService } from '../../oll-selected-state.service';
+import { CubeStateService } from './cube-state.service';
+import { OllAlgs, reverseAlg } from '../oll-alg-info/oll-alg-info';
+import { OllAlg } from '../oll-alg';
 
 @Component({
   selector: 'app-d3-cube',
@@ -7,8 +11,7 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./d3-cube.component.css']
 })
 export class D3CubeComponent implements OnInit {
-
-  constructor() { }
+  constructor(private ollStateService: OllSelectedStateService, private cubeStateService: CubeStateService) {}
 
   private faces:any = {"u":0,"d":1,"l":2,"r":3,"f":4,"b":5}
   private colors:any = [
@@ -18,290 +21,20 @@ export class D3CubeComponent implements OnInit {
     d3.color("blue"),
     d3.color("orange"),
     d3.color("red")
-  ]
-
-  private rotations:any = {
-    "F": this.rotateF,
-    "F'": this.rotateFPrime,
-    "B": this.rotateB,
-    "B'": this.rotateBPrime,
-    "R": this.rotateR,
-    "R'": this.rotateRPrime,
-    "L": this.rotateL,
-    "L'": this.rotateLPrime,
-    "U": this.rotateU,
-    "U'": this.rotateUPrime
-  }
+  ]  
 
   private ollAlgs:any = {}
 
-  private cubeState:object = {
-    "u": [
-      [0,0,0],
-      [0,0,0],
-      [0,0,0]
-    ],
-    "d": [
-      [1,1,1],
-      [1,1,1],
-      [1,1,1]
-    ],
-    "l":[
-      [2,2,2],
-      [2,2,2],
-      [2,2,2]
-    ],
-    "r":[
-      [3,3,3],
-      [3,3,3],
-      [3,3,3]
-    ],
-    "f":[
-      [4,4,4],
-      [4,4,4],
-      [4,4,4]
-    ],
-    "b":[
-      [5,5,5],
-      [5,5,5],
-      [5,5,5]
-    ]
-  };
-
-  rotateU(): void {
-    // rotate 'u'
-    this.cubeState['u'] = [...this.cubeState["u"][0].map((_, colIndex) => this.cubeState["u"].map(row => row[colIndex]))];
-    var temp = [...this.cubeState['b'][0]]
-
-    Object.assign(this.cubeState['b'][0], this.cubeState['l'][0])
-    Object.assign(this.cubeState['l'][0], this.cubeState['f'][0])
-    Object.assign(this.cubeState['f'][0], this.cubeState['r'][0])
-    Object.assign(this.cubeState['r'][0], temp)
-  }
-
-  rotateUPrime(): void {
-    this.rotateU();
-    this.rotateU();
-    this.rotateU();
-  }
-
-  rotateD(): void {
-    // rotate 'd'
-    this.cubeState['d'] = [...this.cubeState["d"][0].map((_, colIndex) => this.cubeState["d"].map(row => row[colIndex]))];
-    var temp = [...this.cubeState['f'][2]]
-    Object.assign(this.cubeState['f'][2], this.cubeState['l'][2])
-    Object.assign(this.cubeState['l'][2], this.cubeState['b'][2])
-    Object.assign(this.cubeState['b'][2], this.cubeState['r'][2])
-    Object.assign(this.cubeState['r'][0], temp)
-  }
-
-  rotateF(): void {
-    // rotate 'f'
-    this.cubeState['f'] = [...this.cubeState["f"][0].map((_, colIndex) => this.cubeState["f"].map(row => row[colIndex]))];
-    
-    // prior transformations to undo after
-    this.cubeState['l'] = [...this.cubeState["l"][0].map((_, colIndex) => this.cubeState["l"].map(row => row[colIndex]))];
-    var lCol = this.cubeState['l'][2]
-    this.cubeState['r'] = [...this.cubeState["r"][0].map((_, colIndex) => this.cubeState["r"].map(row => row[colIndex]))];
-    var rCol =this.cubeState['r'][0]
-
-    var temp = [...this.cubeState['u'][2]]
-
-    Object.assign(this.cubeState['u'][2], lCol)
-    Object.assign(lCol, this.cubeState['d'][0])
-    Object.assign(this.cubeState['d'][0], rCol)
-    Object.assign(rCol, temp)
-
-    // undo prior transformations
-    this.cubeState['l'] = [...this.cubeState["l"][0].map((_, colIndex) => this.cubeState["l"].map(row => row[2-colIndex]))];
-    this.cubeState['r'] = [...this.cubeState["r"][0].map((_, colIndex) => this.cubeState["r"].map(row => row[2-colIndex]))];
-    console.log(this.cubeState)
-  }
-
-  rotateFPrime(): void {
-    this.rotateF()
-    this.rotateF()
-    this.rotateF()
-  }
-
-  rotateL(): void {
-    // rotate 'l'
-    this.cubeState['l'] = [...this.cubeState["l"][0].map((_, colIndex) => this.cubeState["l"].map(row => row[colIndex]))];
-    
-    // prior transformations to undo after
-    this.cubeState['b'] = [...this.cubeState["b"][0].map((_, colIndex) => this.cubeState["b"].map(row => row[colIndex]))];
-    var bCol = this.cubeState['b'][2]
-    this.cubeState['f'] = [...this.cubeState["f"][0].map((_, colIndex) => this.cubeState["f"].map(row => row[colIndex]))];
-    var fCol =this.cubeState['f'][0]
-    this.cubeState['u'] = [...this.cubeState["u"][0].map((_, colIndex) => this.cubeState["u"].map(row => row[colIndex]))];
-    var uCol = this.cubeState['u'][0]
-    this.cubeState['d'] = [...this.cubeState["d"][0].map((_, colIndex) => this.cubeState["d"].map(row => row[colIndex]))];
-    var dCol =this.cubeState['d'][2]
-
-    // switch around the arrays
-    var temp = [...uCol]
-    Object.assign(uCol, bCol)
-    Object.assign(bCol, dCol)
-    Object.assign(dCol, fCol)
-    Object.assign(fCol, temp)
-
-    // undo prior transformations
-    this.cubeState['b'] = [...this.cubeState["b"][0].map((_, colIndex) => this.cubeState["b"].map(row => row[2-colIndex]))];
-    this.cubeState['f'] = [...this.cubeState["f"][0].map((_, colIndex) => this.cubeState["f"].map(row => row[2-colIndex]))];
-    this.cubeState['u'] = [...this.cubeState["u"][0].map((_, colIndex) => this.cubeState["u"].map(row => row[2-colIndex]))];
-    this.cubeState['d'] = [...this.cubeState["d"][0].map((_, colIndex) => this.cubeState["d"].map(row => row[2-colIndex]))];
-  }
-
-  rotateLPrime(): void {
-    this.rotateL()
-    this.rotateL()
-    this.rotateL()
-  }
-
-  rotateB(): void {
-    // rotate 'b'
-    this.cubeState['b'] = [...this.cubeState["b"][0].map((_, colIndex) => this.cubeState["b"].map(row => row[colIndex]))];
-    
-    // prior transformations to undo after
-    this.cubeState['l'] = [...this.cubeState["l"][0].map((_, colIndex) => this.cubeState["l"].map(row => row[colIndex]))];
-    var lCol = this.cubeState['l'][0]
-    this.cubeState['r'] = [...this.cubeState["r"][0].map((_, colIndex) => this.cubeState["r"].map(row => row[colIndex]))];
-    var rCol =this.cubeState['r'][2]
-
-    var temp = [...this.cubeState['u'][0]]
-    Object.assign(this.cubeState['u'][0], rCol)
-    Object.assign(rCol, this.cubeState['d'][2])
-    Object.assign(this.cubeState['d'][2], lCol)
-    Object.assign(lCol, temp)
-
-    // undo prior transformations
-    this.cubeState['l'] = [...this.cubeState["l"][0].map((_, colIndex) => this.cubeState["l"].map(row => row[2-colIndex]))];
-    this.cubeState['r'] = [...this.cubeState["r"][0].map((_, colIndex) => this.cubeState["r"].map(row => row[2-colIndex]))];
-  }
-
-  rotateBPrime(): void {
-    this.rotateB()
-    this.rotateB()
-    this.rotateB()
-  }
-
-  rotateR(): void {
-    // rotate 'r'
-    this.cubeState['r'] = [...this.cubeState["r"][0].map((_, colIndex) => this.cubeState["r"].map(row => row[colIndex]))];
-    
-    // prior transformations to undo after
-    this.cubeState['b'] = [...this.cubeState["b"][0].map((_, colIndex) => this.cubeState["b"].map(row => row[colIndex]))];
-    var bCol = this.cubeState['b'][0]
-    this.cubeState['f'] = [...this.cubeState["f"][0].map((_, colIndex) => this.cubeState["f"].map(row => row[colIndex]))];
-    var fCol =this.cubeState['f'][2]
-    this.cubeState['u'] = [...this.cubeState["u"][0].map((_, colIndex) => this.cubeState["u"].map(row => row[colIndex]))];
-    var uCol = this.cubeState['u'][2]
-    this.cubeState['d'] = [...this.cubeState["d"][0].map((_, colIndex) => this.cubeState["d"].map(row => row[colIndex]))];
-    var dCol =this.cubeState['d'][0]
-
-    // switch around the arrays
-    var temp = [...uCol]
-    Object.assign(uCol, fCol)
-    Object.assign(fCol, dCol)
-    Object.assign(dCol, bCol)
-    Object.assign(bCol, temp)
-
-    // undo prior transformations
-    this.cubeState['b'] = [...this.cubeState["b"][0].map((_, colIndex) => this.cubeState["b"].map(row => row[2-colIndex]))];
-    this.cubeState['f'] = [...this.cubeState["f"][0].map((_, colIndex) => this.cubeState["f"].map(row => row[2-colIndex]))];
-    this.cubeState['u'] = [...this.cubeState["u"][0].map((_, colIndex) => this.cubeState["u"].map(row => row[2-colIndex]))];
-    this.cubeState['d'] = [...this.cubeState["d"][0].map((_, colIndex) => this.cubeState["d"].map(row => row[2-colIndex]))];
-  }
-
-  rotateRPrime(): void {
-    this.rotateR()
-    this.rotateR()
-    this.rotateR()
-  }
-
-  deepCopy(arr:any): any {
-    let copy = [];
-    arr.forEach(elem => {
-      if(Array.isArray(elem)){
-        copy.push(this.deepCopy(elem))
-      }else{
-        copy.push(elem)
-      }
-    })
-    return copy;
-  }
-  
-  getClockwiseRotFace(face:any): any {
-    return face[0].map((_, colIndex) => face.map(row => row[colIndex]))
-  }
-
-  getAnticlockwiseRotFace(face:any): any {
-    return face[0].map((_, colIndex) => face.map(row => row[2-colIndex]))
-  }
-
-  // rotate the entire cube on R
-  rotateX(): void {
-     // rotate r
-     this.cubeState['r'] = this.getClockwiseRotFace(this.cubeState["r"]);
-      // rotate l anti clockwise
-    this.cubeState['l'] = this.getAnticlockwiseRotFace(this.cubeState["l"]);
-
-    var temp = this.deepCopy(this.cubeState['u'])
-    this.cubeState['u'] = this.deepCopy(this.cubeState['f'])
-    this.cubeState['f'] = this.deepCopy(this.cubeState['d'])
-    //rotate b then assign to d
-    var rotatedB = this.getClockwiseRotFace(this.getClockwiseRotFace(this.cubeState["b"]))
-    this.cubeState['d'] = this.deepCopy(rotatedB)
-    // rotate u then assign to b
-    var rotatedU = this.getClockwiseRotFace(this.getClockwiseRotFace(temp))
-    this.cubeState['b'] = this.deepCopy(rotatedU)
-  }
-
-  rotateXPrime(): void {
-    this.rotateX()
-    this.rotateX()
-    this.rotateX()
-  }
-
-    // rotate the entire cube on U
-    rotateY(): void {
-      // rotate r
-      this.cubeState['u'] = this.getClockwiseRotFace(this.cubeState["u"]);
-       // rotate l anti clockwise
-     this.cubeState['d'] = this.getAnticlockwiseRotFace(this.cubeState["d"]);
- 
-     var temp = this.deepCopy(this.cubeState['f'])
-     this.cubeState['f'] = this.deepCopy(this.cubeState['r'])
-     this.cubeState['r'] = this.deepCopy(this.cubeState['b'])
-     this.cubeState['b'] = this.deepCopy(this.cubeState['l'])
-     this.cubeState['l'] = this.deepCopy(temp)
-   }
-
-   rotateYPrime(): void {
-    this.rotateY()
-    this.rotateY()
-    this.rotateY()
-  }
-
-  // rotate whole cube around f
-   rotateZ(): void {
-     this.rotateX()
-     this.rotateY()
-     this.rotateX()
-     this.rotateX()
-     this.rotateX()
-   }
-
-   rotateZPrime(): void {
-    this.rotateXPrime()
-    this.rotateY()
-    this.rotateX()
-  }
-
   ngOnInit(): void {
-    console.log("cubeState: ");
-    console.log(this.cubeState);
-    this.initCube(this.colors);
+    this.initCube(this.colors, []);
+  }
+
+  drawOll(): void {
+    console.log("drawing oll")
+    var newOll = this.ollStateService.drawNewOll()
+    var oll:OllAlg = OllAlgs.filter(elem => elem.name = newOll)[0]
+    var algMoves: string[] = reverseAlg(oll.alg)
+    this.initCube(this.colors, algMoves);
   }
 
   gridData(colors: Array<any>) :any[] {
@@ -335,15 +68,19 @@ export class D3CubeComponent implements OnInit {
     return data;
   }
 
-  initCube(colors: any): void {
+
+  initCube(colors: any, moves: string[]): void {
+    // deep copy complex object
     const cubeWidth = 50;
     const angle = 30
     const angle2 = 180
     const lengthTrans = 1
-    this.rotateZPrime();
-    var gridData = this.gridData(this.cubeState['u']);	
+    this.cubeStateService.initCube()
+    this.cubeStateService.executeMoves(moves)
+
+    var cubeState = this.cubeStateService.getCubeState()
+    var gridData = this.gridData(this.cubeStateService.getUToPrint());	
     // I like to log the data to the console for quick debugging
-    console.log(gridData);
     var dx = 255, dy = 0;
     var a = -lengthTrans, b = 0, c = 0, d = Math.sin(30 * Math.PI/angle2);
     b = Math.sin(angle * Math.PI/angle2),
@@ -372,7 +109,7 @@ export class D3CubeComponent implements OnInit {
       .attr("fill", function(d: any) { return colors[d.color]; })
       .style("stroke", "#222");
   
-    var gridDataLeft = this.gridData(this.cubeState['l']);	
+    var gridDataLeft = this.gridData(this.cubeStateService.getLToPrint());	
     dx = 255 - 150 * 2 * Math.sin(angle * Math.PI/180), dy = 75 * 2 * Math.sin(angle * Math.PI/angle2);
     a = 1, b = 0, c = 0, d = 1;
     b = Math.sin(angle * Math.PI/angle2)
@@ -395,7 +132,9 @@ export class D3CubeComponent implements OnInit {
         .style("fill", function(d: any) { return colors[d.color]; })
         .style("stroke", "#222")
 
-  var gridDataRight = this.gridData(this.cubeState['f']);	
+  // cubeState['f'][0][0] = 1
+  var fToPrint = this.cubeStateService.getFToPrint()
+  var gridDataRight = this.gridData(fToPrint);	
   dx = 255, dy = 150 * 2 * Math.sin(angle * Math.PI/angle2);
   a = 1, b = 0, c = 0, d = 1;
   b = -Math.sin(angle * Math.PI/angle2);

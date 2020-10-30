@@ -23,7 +23,7 @@ export class OllSelectPageComponent implements OnInit {
   }
 
   setOllType(ollType: string) {
-    this.ollStateService.setOll(ollType);
+    this.ollStateService.setOllType(ollType);
   }
   constructor(private ollStateService: OllSelectedStateService) {}
 }

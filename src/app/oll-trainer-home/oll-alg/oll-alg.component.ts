@@ -29,7 +29,7 @@ export class OllAlgComponent implements OnInit {
   }
 
   ngOnInit() {
-    const curElem = this.ollStateService.getCurOll()
+    const curElem = this.ollStateService.getCurOllType()
     this.ollAlgs = OllAlgs.filter(elem => elem.type == curElem)
   }
   onClickOll(event: any) {
