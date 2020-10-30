@@ -86,6 +86,7 @@ export class D3CubeComponent implements OnInit {
     b = Math.sin(angle * Math.PI/angle2),
     c = 1;
     var matrix = [a, b, c, d, dx, dy];
+    d3.select("svg").remove();
     var grid = d3.select("#grid")
       .append("svg")
       .attr("width","510px")
