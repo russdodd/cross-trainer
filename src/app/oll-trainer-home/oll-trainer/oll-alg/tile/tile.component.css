@@ -1,3 +1,7 @@
 .oll-image {
     width: 80px;
 }
+
+.greyed {
+    opacity: 0.4;
+}

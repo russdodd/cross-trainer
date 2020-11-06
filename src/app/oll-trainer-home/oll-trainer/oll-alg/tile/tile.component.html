@@ -1,1 +1,1 @@
-<img [src]="src" class="oll-image">
+<img [src]="src" [ngClass]="greyed ? 'oll-image greyed' : 'oll-image'" (click)="checkGuess()">

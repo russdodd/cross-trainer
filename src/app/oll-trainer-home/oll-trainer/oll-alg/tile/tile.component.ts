@@ -1,4 +1,5 @@
 import { Component, OnInit, Input} from '@angular/core';
+import { OllSelectedStateService } from '../../../../oll-selected-state.service';
 
 @Component({
   selector: 'app-tile',
@@ -7,11 +8,19 @@ import { Component, OnInit, Input} from '@angular/core';
 })
 export class TileComponent implements OnInit {
   @Input() src: string;
-  @Input() ollIdx: number;
-  @Input() ollChosenIdx: number;
-  constructor() { }
+  @Input() ollId: string;
+  @Input() chosenOllId: string;
+  public greyed: boolean = false;
+  constructor(private ollStateService: OllSelectedStateService) {}
 
   ngOnInit(): void {
   }
 
+  checkGuess(): void {
+    console.log("this.ollId: " + this.ollId)
+    console.log("this.ollStateService.getOll(): " + this.ollStateService.getOll())
+    if (this.ollId != this.ollStateService.getOll()) {
+      this.greyed = true;
+    }
+  }
 }
