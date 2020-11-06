@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { OllAlg } from '../oll-alg';
-import { OllAlgs } from '../oll-alg-info/oll-alg-info';
-import * as OllDefs from '../oll-alg-info/oll-alg-types';
-import { OllSelectedStateService } from '../../oll-selected-state.service';
+import { OllAlg } from '../../oll-alg';
+import { OllAlgs } from '../../oll-alg-info/oll-alg-info';
+import * as OllDefs from '../../oll-alg-info/oll-alg-types';
+import { OllSelectedStateService } from '../../../oll-selected-state.service';
 
 @Component({
   selector: 'app-oll-alg',

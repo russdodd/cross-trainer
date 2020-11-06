@@ -1,9 +1,9 @@
 import * as d3 from 'd3';
 import { Component, OnInit } from '@angular/core';
-import { OllSelectedStateService } from '../../oll-selected-state.service';
+import { OllSelectedStateService } from '../../../oll-selected-state.service';
 import { CubeStateService } from './cube-state.service';
-import { OllAlgs, reverseAlg } from '../oll-alg-info/oll-alg-info';
-import { OllAlg } from '../oll-alg';
+import { OllAlgs, reverseAlg } from '../../oll-alg-info/oll-alg-info';
+import { OllAlg } from '../../oll-alg';
 
 @Component({
   selector: 'app-d3-cube',
@@ -17,9 +17,9 @@ export class D3CubeComponent implements OnInit {
   private colors:any = [
     d3.color("yellow"),
     d3.color("white"),
-    d3.color("green"),
-    d3.color("blue"),
-    d3.color("orange"),
+    d3.color("limegreen"),
+    d3.color("royalBlue"),
+    d3.color("#ff8b00"),
     d3.color("red")
   ]  
 
@@ -76,6 +76,7 @@ export class D3CubeComponent implements OnInit {
     const angle2 = 180
     const lengthTrans = 1
     this.cubeStateService.initCube()
+    this.cubeStateService.preOllRandomization()
     this.cubeStateService.executeMoves(moves)
 
     var cubeState = this.cubeStateService.getCubeState()

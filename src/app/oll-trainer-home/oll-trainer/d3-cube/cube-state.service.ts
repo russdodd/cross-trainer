@@ -360,6 +360,33 @@ export class CubeStateService {
       // this.printCubeFaces()
     });
   }
+  
+  // max is the number of possible choices
+  // value of highest choice is max - 1
+  getRandomInt(max: number) {
+    return Math.floor(Math.random() * Math.floor(max));
+  }
+
+  // todo:
+  //  do random amount of y rotations
+  //  do random pll
+  preOllRandomization() {
+    this.doRandomYRotations()
+  }
+
+  doRandomYRotations() {
+    var numRotations = this.getRandomInt(4)
+    console.log("numRotations: " + numRotations)
+    for (var i = 0; i <= numRotations; i++) {
+      this.rotateY()
+    }
+  }
+
+  // todo:
+  //  do random amount of y rotations
+  postOllRandomization() {
+    
+  }
 
   initCube() {
     this.cubeState = JSON.parse(JSON.stringify(this.cubeStateTemplate))
