@@ -9,6 +9,10 @@ Generate a cross at a difficulty level of your choosing and get the optimal solu
 ## Oll Two Sided Recognition Trainer
 Practice your recognization to shorten your recognition time.
 
+## Deployment
+
+Hosted on Cloudflare Pages. Merge to `main` → auto-build and deploy. See `CLAUDE.md` for full deployment details.
+
 ## Development server
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.

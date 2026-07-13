@@ -24,7 +24,8 @@
                             "src/favicon.png",
                             "src/assets",
                             "src/oll-pics",
-                            "src/styles.css"
+                            "src/styles.css",
+                            "src/_redirects"
                         ],
                         "styles": [
                             "src/styles.css"
