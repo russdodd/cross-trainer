@@ -1,2 +1,5 @@
 name = "cross-trainer"
 pages_build_output_dir = "dist/cube-trainer"
+
+[build]
+command = "npm run build"
