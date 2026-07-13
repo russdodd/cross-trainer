@@ -4,6 +4,7 @@
     "scripts": {
         "ng": "ng",
         "start": "ng serve",
+        "prebuild": "find node_modules -name '*.d.ts.__ivy_ngcc_bak' -delete 2>/dev/null || true",
         "build": "ng build",
         "test": "ng test",
         "lint": "ng lint",
