@@ -3,6 +3,7 @@ import * as OllDefs from './oll-alg-info/oll-alg-types';
 import { OllSelectedStateService } from '../oll-selected-state.service';
 
 @Component({
+  standalone: false,
   selector: 'app-oll-trainer-home',
   templateUrl: './oll-trainer-home.component.html',
   styleUrls: ['./oll-trainer-home.component.css']

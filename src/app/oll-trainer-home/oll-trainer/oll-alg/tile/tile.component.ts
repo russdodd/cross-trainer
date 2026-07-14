@@ -2,14 +2,15 @@ import { Component, OnInit, Input} from '@angular/core';
 import { OllSelectedStateService } from '../../../../oll-selected-state.service';
 
 @Component({
+  standalone: false,
   selector: 'app-tile',
   templateUrl: './tile.component.html',
   styleUrls: ['./tile.component.css']
 })
 export class TileComponent implements OnInit {
-  @Input() src: string;
-  @Input() ollId: string;
-  @Input() chosenOllId: string;
+  @Input() src!: string;
+  @Input() ollId!: string;
+  @Input() chosenOllId!: string;
   public greyed: boolean = false;
   constructor(private ollStateService: OllSelectedStateService) {}
 

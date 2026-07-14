@@ -5,7 +5,7 @@ import { Injectable } from '@angular/core';
 })
 export class CubeStateService {
   private faces:any = {"u":0,"d":1,"l":2,"r":3,"f":4,"b":5}
-  private rotations:any = {
+  private rotations: Record<string, (parent: CubeStateService) => void> = {
     "F": parent => parent.rotateF(),
     "F'": parent => parent.rotateFPrime(),
     "B": parent => parent.rotateB(),
@@ -27,8 +27,8 @@ export class CubeStateService {
     "x": parent => parent.rotateX(),
     "x'": parent => parent.rotateXPrime()
   }
-  private cubeState:object = {}
-  private cubeStateTemplate:object = {
+  private cubeState: Record<string, any> = {}
+  private cubeStateTemplate: Record<string, any> = {
     "u": [
       [0,0,0],
       [0,0,0],
@@ -220,8 +220,8 @@ export class CubeStateService {
   }
 
   deepCopy(arr:any): any {
-    let copy = [];
-    arr.forEach(elem => {
+    const copy: any[] = [];
+    arr.forEach((elem: any) => {
       if(Array.isArray(elem)){
         copy.push(this.deepCopy(elem))
       }else{
@@ -402,7 +402,7 @@ export class CubeStateService {
 
   getUToPrint(): any {
     var u = this.deepCopy(this.cubeState['u'])
-    var uFlipped = u.map(elem => elem.reverse()).reverse()
+    var uFlipped = (u as any[][]).map((elem: any[]) => elem.reverse()).reverse()
     return uFlipped
   }
 

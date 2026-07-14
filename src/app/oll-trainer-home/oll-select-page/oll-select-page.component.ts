@@ -4,6 +4,7 @@ import { NgForm } from '@angular/forms';
 import { OllSelectedStateService } from '../../oll-selected-state.service';
 
 @Component({
+  standalone: false,
   selector: 'app-oll-select-page',
   templateUrl: './oll-select-page.component.html',
   styleUrls: ['./oll-select-page.component.css']

@@ -61,7 +61,7 @@ export const OllAlgs: OllAlg[] = [
 ];
 
 export function reverseAlg(alg: string): string[] {
-  var convertMove = {
+  const convertMove: Record<string, string> = {
     "r": "r'",
     "r'": "r",
     "l": "l'",
@@ -97,7 +97,7 @@ export function reverseAlg(alg: string): string[] {
   }
   var result = ""
   var moves = alg.split(" ").reverse()
-  var flattenedMoves = []
+  const flattenedMoves: string[] = []
   moves.forEach(elem => {
     if (elem.split("2").length == 2) {
       var move = elem.split("2")[0]

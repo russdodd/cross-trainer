@@ -2,5 +2,5 @@ name = "cross-trainer"
 compatibility_date = "2024-09-23"
 
 [assets]
-directory = "dist/cube-trainer"
+directory = "dist/cube-trainer/browser"
 not_found_handling = "single-page-application"

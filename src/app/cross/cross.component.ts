@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 
 @Component({
+  standalone: false,
   selector: 'app-cross',
   templateUrl: './cross.component.html',
   styleUrls: ['./cross.component.css']

@@ -4,6 +4,7 @@ import { scrambles } from '../Scrambles';
 import { cross } from '../cstimer/cross.js';
 
 @Component({
+  standalone: false,
   selector: 'app-scramble',
   templateUrl: './scramble.component.html',
   styleUrls: ['./scramble.component.css']

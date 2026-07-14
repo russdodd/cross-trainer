@@ -1,12 +1,13 @@
 # cross-trainer
 
-Personal speedcubing practice tool. Angular 10 SPA with two features: a **Cross Trainer** (actively used) and an **OLL Trainer** (rarely used). Deployed via Docker → nginx.
+Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross Trainer** (actively used) and an **OLL Trainer** (rarely used). Deployed to Cloudflare Workers on merge to `main`.
 
 ## Stack
 
-- Angular 10 / TypeScript
-- D3.js (OLL cube visualisation)
-- Docker multi-stage build (Node build → nginx static serve)
+- Angular 20 / TypeScript 5.9 (upgraded from Angular 10 in July 2026)
+- esbuild-based `@angular/build:application` builder (replaces the old webpack-based `@angular-devkit/build-angular:browser`)
+- D3 v7 (OLL cube visualisation; upgraded from v6)
+- RxJS 7.x (upgraded from 6.x)
 - No backend; all logic runs client-side
 
 ## Routes
@@ -42,7 +43,7 @@ Personal speedcubing practice tool. Angular 10 SPA with two features: a **Cross 
 
 **Scramble encoding:** Each character A–R maps to a move index. `MoveNamesWCA = ["R","R2","R'","B","B2","B'","L","L2","L'","F","F2","F'","D","D2","D'","U","U2","U'"]`. There is also a `MoveNames` array built in the same loop but never used — dead code.
 
-**Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`.
+**Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`. These are vendored JS files compiled with `allowJs: true` in tsconfig — they are ES module format and do not have type declarations.
 
 ## OLL Trainer (secondary feature)
 
@@ -64,18 +65,21 @@ Personal speedcubing practice tool. Angular 10 SPA with two features: a **Cross 
 
 ## Deployment
 
-### Current setup (Cloudflare Pages — active)
+### Current setup (Cloudflare Workers — active)
 
-Hosted on **Cloudflare Pages**, connected to the GitHub repo (`russdodd/cross-trainer`). Deploying to prod is just **merging to `main`** — Cloudflare detects the push, builds, and deploys automatically. PR branches get free preview URLs.
+Hosted on **Cloudflare Workers with static assets** (NOT Cloudflare Pages — the project type is Worker+Assets). Connected to GitHub `russdodd/cross-trainer`. Deploying to prod is **merging to `main`** — Cloudflare detects the push, builds, and deploys automatically. Live at `cross-trainer.russell-dodd.workers.dev` (and `russdodd.dev` once the custom domain is pointed here).
 
-Cloudflare free tier also manages the `russdodd.dev` domain (DNS + proxy). The Pages custom domain wiring lives in the same Cloudflare account.
+**Config files (all committed):**
+- `wrangler.toml` — `name = "cross-trainer"`, `[assets] directory = "dist/cube-trainer/browser"` (the `browser/` subfolder is the esbuild application builder output), `not_found_handling = "single-page-application"` (SPA deep-link fallback — the Workers-native way)
+- `.nvmrc` = `20` (Cloudflare Workers Builds uses this to select Node version)
+- `package.json`: `build` = `ng build` (production build by default in Angular 20, no hacks needed)
 
-**Build config (set in the Cloudflare Pages dashboard):**
-- Build command: `npm install && npm run build`
-- Output directory: `dist/cube-trainer` (from `angular.json` → `outputPath`)
-- Node version: 14 (pinned via `.nvmrc`; Angular 10 does not build cleanly on modern Node)
+**Cloudflare dashboard build settings:**
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- (Do NOT prefix `npm install &&` to the build command — Cloudflare already does a clean install)
 
-**SPA routing:** `src/_redirects` (copied into `dist/cube-trainer/_redirects` at build time via `angular.json` assets) contains `/* /index.html 200` so deep links and browser refreshes resolve to the app instead of 404ing.
+**Why Workers not Pages:** Misidentifying the project type causes deploy failures. `wrangler deploy` (Workers) vs `wrangler pages deploy` (Pages) are different commands. The `.workers.dev` URL and `versions upload` as the default deploy command are the tells.
 
 ### Legacy setup (DigitalOcean droplet — no longer used)
 
@@ -86,4 +90,5 @@ The original deploy was: SSH to a DO droplet → `git pull` → `docker-compose 
 - Level dropdown value is read via `document.getElementById` in `ScrambleComponent`, not Angular two-way binding.
 - `TextScramble` (using `MoveNames`) is built in `newScramble()` but never used — dead code.
 - `sols[0]` from `cross.solve()` is skipped; `sols[1]` is shown. The solver returns a header/metadata entry at index 0.
-- Angular version is 10 (2020); the lazy-loaded OLL module uses the old string-based syntax (`'./oll-trainer-home/oll-trainer-home.module#OllTrainerHomeModule'`).
+- All components use `standalone: false` (NgModule-based architecture) — this is still fully supported in Angular 20 and was chosen to avoid a full standalone migration during the Angular 10→20 upgrade. `angular.json` schematics set `standalone: false` as the default for any newly generated components.
+- `tsconfig.json` has `strictTemplates: false` — a deliberate trade-off made during the upgrade to avoid fixing all template binding types at once. Can be enabled as a follow-up.

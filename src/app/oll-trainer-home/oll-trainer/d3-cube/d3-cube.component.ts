@@ -6,6 +6,7 @@ import { OllAlgs, reverseAlg } from '../../oll-alg-info/oll-alg-info';
 import { OllAlg } from '../../oll-alg';
 
 @Component({
+  standalone: false,
   selector: 'app-d3-cube',
   templateUrl: './d3-cube.component.html',
   styleUrls: ['./d3-cube.component.css']
