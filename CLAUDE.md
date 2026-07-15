@@ -74,10 +74,14 @@ Hosted on **Cloudflare Workers with static assets** (NOT Cloudflare Pages — th
 - `.nvmrc` = `20` (Cloudflare Workers Builds uses this to select Node version)
 - `package.json`: `build` = `ng build` (production build by default in Angular 20, no hacks needed)
 
-**Cloudflare dashboard build settings:**
+**Cloudflare dashboard build settings (Settings → Build):**
 - Build command: `npm run build`
-- Deploy command: `npx wrangler deploy`
+- Deploy command (used for the **production branch**, `main`): `npx wrangler deploy` — 100% production traffic
+- Non-production branch deploy command (used for every other branch): `npx wrangler versions upload` — uploads a version and prints a **preview alias URL** (`https://<branch-name>-cross-trainer.russell-dodd.workers.dev`), 0% production traffic
+- Production branch: `main`
 - (Do NOT prefix `npm install &&` to the build command — Cloudflare already does a clean install)
+
+**Important gotcha:** if the non-production branch deploy command is ever left as `npx wrangler deploy` (e.g. right after scaffolding a new Worker, or if reset), **every branch push deploys straight to 100% production traffic**, regardless of the "Production branch" setting — that setting alone does not protect prod. This bit us once (July 2026): a `modernize-angular` branch push briefly went live on `cross-trainer.russell-dodd.workers.dev` before the non-production command was corrected. Always verify Settings → Build has the two commands set differently before trusting branch pushes to be safe previews.
 
 **Why Workers not Pages:** Misidentifying the project type causes deploy failures. `wrangler deploy` (Workers) vs `wrangler pages deploy` (Pages) are different commands. The `.workers.dev` URL and `versions upload` as the default deploy command are the tells.
 
