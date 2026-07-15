@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 
 @Component({
   standalone: false,
@@ -6,11 +6,19 @@ import { Component, OnInit } from '@angular/core';
   templateUrl: './cross.component.html',
   styleUrls: ['./cross.component.css']
 })
-export class CrossComponent implements OnInit {
+export class CrossComponent {
 
-  constructor() { }
+  levels = [1, 2, 3, 4, 5, 6, 7, 8];
+  minLevel = 1;
+  maxLevel = 1;
 
-  ngOnInit(): void {
+  get maxLevelOptions(): number[] {
+    return this.levels.filter(l => l >= this.minLevel);
+  }
+
+  onMinLevelChange(level: number): void {
+    this.minLevel = level;
+    this.maxLevel = level;
   }
 
 }

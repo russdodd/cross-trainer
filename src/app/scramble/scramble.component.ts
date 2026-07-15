@@ -1,5 +1,5 @@
 
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { scrambles } from '../Scrambles';
 import { cross } from '../cstimer/cross.js';
 
@@ -11,8 +11,13 @@ import { cross } from '../cstimer/cross.js';
 })
 export class ScrambleComponent {
 
+    @Input() minLevel = 1;
+    @Input() maxLevel = 1;
+
     public scramble:any = "";
     public solution:any = "";
+    public solutionLevel = 0;
+    private scrambleLevel = 0;
     private GetSolution:string = "Get Solution";
     private HideSolution:string = "Hide Solution";
 
@@ -20,26 +25,23 @@ export class ScrambleComponent {
 
 
     newScramble() {
-        var MoveNames = ["R", "R2", "R'", "F", "F2", "F'", "L", "L2", "L'", "B", "B2", "B'", "U", "U2", "U'", "D", "D2", "D'"];
-        var MoveNamesWCA;
-        MoveNamesWCA = ["R", "R2", "R'", "B", "B2", "B'", "L", "L2", "L'", "F", "F2", "F'", "D", "D2", "D'", "U", "U2", "U'"];
+        var MoveNamesWCA = ["R", "R2", "R'", "B", "B2", "B'", "L", "L2", "L'", "F", "F2", "F'", "D", "D2", "D'", "U", "U2", "U'"];
 
-        let Level = +(<HTMLInputElement>document.getElementById("Level")).value;
+        let Level = this.minLevel + Math.floor(Math.random() * (this.maxLevel - this.minLevel + 1));
         var RandomScramble = scrambles[Level - 1][Math.floor(Math.random() * 1000)];
-        var TextScramble = "";
         var TextScrambleWithSpaces = "";
-    
+
         for (var A = 0; A < RandomScramble.length; A++) {
-            TextScramble += MoveNames[RandomScramble[A].charCodeAt(0) - 'A'.charCodeAt(0)];
             if (A > 0) {
                 TextScrambleWithSpaces += " ";
             }
             TextScrambleWithSpaces += MoveNamesWCA[RandomScramble[A].charCodeAt(0) - 'A'.charCodeAt(0)];
-            console.log("TextScrambleWithSpaces: " + TextScrambleWithSpaces)
         }
-        
+
+        this.scrambleLevel = Level;
         this.scramble = TextScrambleWithSpaces;
         this.solution = "";
+        this.solutionLevel = 0;
         this.SolButtonText = this.GetSolution;
         return false;
     }
@@ -48,6 +50,7 @@ export class ScrambleComponent {
         if (this.SolButtonText == this.HideSolution) {
             this.SolButtonText = this.GetSolution;
             this.solution = "";
+            this.solutionLevel = 0;
             return false
         }
         if (this.scramble == "") {
@@ -55,14 +58,9 @@ export class ScrambleComponent {
         }
         this.SolButtonText = this.HideSolution;
 
-        var scrambleArr = this.scramble.split(" ");
-        console.log("scrambleArr: " + scrambleArr);
-        var sols = cross.solve(scrambleArr.join(" "));
-        console.log("sols" + sols + '\n' + "sols length: " + sols.length);
-        for (var i = 0; i < sols.length; i++){
-            console.log("sol " + i + ": " + sols[i]);
-        }
+        var sols = cross.solve(this.scramble);
         this.solution = sols[1].join('  ');
+        this.solutionLevel = this.scrambleLevel;
         return false;
     }
 }

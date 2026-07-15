@@ -22,11 +22,11 @@ Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross 
 
 ## Cross Trainer (primary feature)
 
-**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty level (1–8 moves to solve), gets a scramble, and can reveal the optimal solution.
+**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click), gets a scramble from a random level in the range, and can reveal the optimal solution (labelled with the picked level).
 
 **Key files:**
-- `src/app/cross/cross.component.html` — level dropdown (1–8) + `<app-scramble>`
-- `src/app/cross/cross.component.ts` — thin shell, no logic
+- `src/app/cross/cross.component.html` — from/to level dropdowns (1–8) + `<app-scramble>`
+- `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From)
 - `src/app/scramble/scramble.component.ts` — all the logic
 - `src/app/Scrambles.ts` — 8 arrays × 1000 pre-computed scrambles (character-encoded)
 - `src/app/cstimer/cross.js` — cross solver (ported from cstimer)
@@ -34,14 +34,14 @@ Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross 
 
 **Flow:**
 
-1. User selects level and clicks "Get Scramble"
-2. `ScrambleComponent.newScramble()` reads the level via `document.getElementById("Level")` (direct DOM access, not Angular binding)
+1. User selects a level range and clicks "Get Scramble"
+2. `ScrambleComponent.newScramble()` gets the range via `@Input() minLevel/maxLevel` (bound from `CrossComponent` via `ngModel`) and picks a uniform random level in it
 3. Picks `scrambles[level-1][randomIndex]` — a character-encoded scramble string
 4. Decodes each char using `charCodeAt - 'A'.charCodeAt(0)` as an index into `MoveNamesWCA`
 5. Displays the resulting WCA-notation scramble string
-6. "Get Solution" calls `cross.solve(scrambleStr)` → returns array of solution arrays; `sols[1]` is displayed (the first element `sols[0]` is skipped — likely a metadata entry)
+6. "Get Solution" calls `cross.solve(scrambleStr)` → returns array of solution arrays; `sols[1]` is displayed (the first element `sols[0]` is skipped — likely a metadata entry) alongside the picked level ("Solution (Level 6)")
 
-**Scramble encoding:** Each character A–R maps to a move index. `MoveNamesWCA = ["R","R2","R'","B","B2","B'","L","L2","L'","F","F2","F'","D","D2","D'","U","U2","U'"]`. There is also a `MoveNames` array built in the same loop but never used — dead code.
+**Scramble encoding:** Each character A–R maps to a move index. `MoveNamesWCA = ["R","R2","R'","B","B2","B'","L","L2","L'","F","F2","F'","D","D2","D'","U","U2","U'"]`.
 
 **Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`. These are vendored JS files compiled with `allowJs: true` in tsconfig — they are ES module format and do not have type declarations.
 
@@ -93,8 +93,6 @@ The original deploy was: SSH to a DO droplet → `git pull` → `docker-compose 
 
 ## Known quirks
 
-- Level dropdown value is read via `document.getElementById` in `ScrambleComponent`, not Angular two-way binding.
-- `TextScramble` (using `MoveNames`) is built in `newScramble()` but never used — dead code.
 - `sols[0]` from `cross.solve()` is skipped; `sols[1]` is shown. The solver returns a header/metadata entry at index 0.
 - All components use `standalone: false` (NgModule-based architecture) — this is still fully supported in Angular 20 and was chosen to avoid a full standalone migration during the Angular 10→20 upgrade. `angular.json` schematics set `standalone: false` as the default for any newly generated components.
 - `tsconfig.json` has `strictTemplates: false` — a deliberate trade-off made during the upgrade to avoid fixing all template binding types at once. Can be enabled as a follow-up.
