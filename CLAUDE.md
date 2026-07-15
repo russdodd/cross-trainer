@@ -81,6 +81,8 @@ Hosted on **Cloudflare Workers with static assets** (NOT Cloudflare Pages — th
 - Production branch: `main`
 - (Do NOT prefix `npm install &&` to the build command — Cloudflare already does a clean install)
 
+**Previewing before merge:** pushing any non-`main` branch makes Cloudflare build and upload a preview instance at `https://<branch-name>-cross-trainer.russell-dodd.workers.dev` (0% production traffic). This is the easy way to eyeball a change in a real deployed environment before merging to `main`.
+
 **Important gotcha:** if the non-production branch deploy command is ever left as `npx wrangler deploy` (e.g. right after scaffolding a new Worker, or if reset), **every branch push deploys straight to 100% production traffic**, regardless of the "Production branch" setting — that setting alone does not protect prod. This bit us once (July 2026): a `modernize-angular` branch push briefly went live on `cross-trainer.russell-dodd.workers.dev` before the non-production command was corrected. Always verify Settings → Build has the two commands set differently before trusting branch pushes to be safe previews.
 
 **Why Workers not Pages:** Misidentifying the project type causes deploy failures. `wrangler deploy` (Workers) vs `wrangler pages deploy` (Pages) are different commands. The `.workers.dev` URL and `versions upload` as the default deploy command are the tells.

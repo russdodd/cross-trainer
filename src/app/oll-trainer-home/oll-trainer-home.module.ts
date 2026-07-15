@@ -24,7 +24,6 @@ import { FormsModule } from '@angular/forms';
     CommonModule,
     RouterModule.forChild(OllRoutes),
     FormsModule
-  ],
-  bootstrap: [OllTrainerHomeComponent]
+  ]
 })
 export class OllTrainerHomeModule { }

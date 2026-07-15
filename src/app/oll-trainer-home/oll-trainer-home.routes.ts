@@ -8,11 +8,11 @@ export const OllRoutes: Routes = [
         path: '',
         component: OllTrainerHomeComponent,
         children: [{
-          path: 'oll-trainer-home/select',
+          path: 'select',
           component: OllSelectPageComponent,
         },
         {
-          path: 'oll-trainer-home/cube',
+          path: 'cube',
           component: OllTrainerComponent,
         }]
       }    
