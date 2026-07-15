@@ -6,9 +6,9 @@ a.home-link {
 
 .aligned {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
 }
 
 .aligned img {
@@ -18,10 +18,4 @@ a.home-link {
 
 span {
     padding: 10px;
-}
-
-@media (max-width: 600px) {
-    .aligned {
-        flex-direction: column;
-    }
 }
