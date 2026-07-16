@@ -55,6 +55,38 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **User's take (July 2026):** not convinced by forced time pressure. Training philosophy: take as long as you need to plan properly; speed under 15s comes naturally once you're good enough, whereas a countdown forces rushing before the skill is there. Parked — at most a passive elapsed-time display, never a forcing mechanism.
 
+## 4. First-pair tracking difficulty — ✅ DONE (July 2026)
+
+**Idea:** The user practices tracking the first F2L pair through the cross solution. Grade every pre-computed scramble by how hard that tracking is, add a control to filter by difficulty, and reveal how each pair actually behaved alongside the solution.
+
+**Analysis:**
+
+- **Two axes, not one.** The original framing ("easy = the pair isn't touched by the cross solve") turned out to grade the wrong thing. Cube-tested verdict: an untouched pair is "extremely easy... barely testing your tracking skills, it's really just testing your ability to recognize good cases to track." So the model splits into:
+  - **Favourability = a filter.** Which pairs are worth tracking at all — an F2L-quality question, not a tracking-difficulty one.
+  - **Disruptions = the dial.** How many solution moves displace either piece (counted even if a later move returns it).
+- **The cube makes favourability clean.** Once the cross is solved, a corner can only be in the U layer or stuck in an F2L slot, and an edge only in U or an E-slice slot — the cross occupies every D edge slot. So "ends on the bottom" always means "needs extraction". The filter is therefore just: **corner ends on top**. Only ~11–16 scrambles per 1000 have no such pair.
+- **Grade = the best qualifying pair**, since that's the one you'd actually pick — otherwise the drill is dodgeable by tracking a trivial pair.
+- **Bands: easy 0–2, medium 3–4, hard 5+** total disruptions. Chosen from the distribution, not guessed:
+
+  | Level | Easy | Medium | Hard | None |
+  |---|---|---|---|---|
+  | 1 | 984 | 0 | 0 | 16 |
+  | 2 | 961 | 24 | 0 | 15 |
+  | 3 | 855 | 127 | 3 | 15 |
+  | 4 | 624 | 329 | 37 | 10 |
+  | 5 | 365 | 526 | 98 | 11 |
+  | 6 | 172 | 592 | 225 | 11 |
+  | 7 | 65 | 482 | 440 | 13 |
+  | 8 | 15 | 305 | 669 | 11 |
+
+  Levels 1–2 have no hard cases — a 1–2 move cross can't disrupt a pair five times. The UI shows a message instead of a scramble for empty band × level combinations.
+- **Trade-off accepted:** the filter allows the edge anywhere, so ~40% of recommended pairs have the edge in a slot. The reveal shows this, so it stays judgeable in practice.
+- **Rejected for v1:** tracking orientation (twist/flip). All the stated criteria are positional. Would let us spot already-connected "gift" pairs (~13% of corner-in-slot cases have the edge in that same slot), so worth revisiting if grades ever feel wrong.
+
+**Implemented:** `scripts/analyze-pair-tracking.mjs` (analysis + data generation), `src/app/PairTrackingData.ts` (generated), `src/app/pair-tracking.ts` (model), `pair-tracking.spec.ts` (guards the distribution and the encoder/decoder contract), plus a band dropdown on `CrossComponent` and the pair reveal in `ScrambleComponent`.
+
+**Verification:** the analysis is self-checking — it asserts the cross is genuinely solved after scramble + solution for all 8000 scrambles, which validates the tracker, the z2 frame mapping and the solver call together. Five worked samples were checked on a real cube. In the app, the reveal prints per-pair evidence ("corner moved 2×, ends on top; edge moved 0×, ends on top") so every grade stays checkable during normal practice.
+
 ## Smaller / future ideas
 
 - **Keyboard-first flow:** spacebar = new scramble, `S` = toggle solution.

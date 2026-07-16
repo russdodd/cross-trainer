@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { TrackingBand } from '../pair-tracking';
 
 @Component({
   standalone: false,
@@ -12,6 +13,16 @@ export class CrossComponent {
   minLevel = 1;
   maxLevel = 1;
 
+  trackingBand: TrackingBand | 'any' = 'any';
+  trackingBands: { value: TrackingBand | 'any', label: string }[] = [
+    { value: 'any', label: 'Any first pair' },
+    { value: 'easy', label: 'Easy first pair to track' },
+    { value: 'medium', label: 'Medium first pair to track' },
+    { value: 'hard', label: 'Hard first pair to track' },
+  ];
+
+  showMethodology = false;
+
   get maxLevelOptions(): number[] {
     return this.levels.filter(l => l >= this.minLevel);
   }
@@ -19,6 +30,11 @@ export class CrossComponent {
   onMinLevelChange(level: number): void {
     this.minLevel = level;
     this.maxLevel = level;
+  }
+
+  toggleMethodology(): boolean {
+    this.showMethodology = !this.showMethodology;
+    return false;
   }
 
 }

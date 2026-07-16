@@ -22,10 +22,13 @@ Collect console errors (`page.on('console')` / `page.on('pageerror')`) — Angul
 
 ## Flows worth driving
 
-- **Cross trainer** (`/cross-component`): click "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears.
+- **Cross trainer** (`/cross-component`): three dropdowns — two level ones (changing "from" snaps "to" to match; "to" options filtered to ≥ "from") and a first-pair tracking band; "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears with "(Level N)" in the Solution heading, plus four `.pair-row` entries with `.pair-recommended` on the best pair. Band + level combinations that hold no scrambles (e.g. Hard at levels 1–2) are expected: they render `.pair-message` and clear the scramble rather than drawing.
 - **OLL trainer** (`/oll-trainer-home`): "Select" nav link → `/oll-trainer-home/select`, 14 radio buttons; "Trainer" nav link → `/oll-trainer-home/cube`, D3 SVG cube with 27 `rect` stickers. Also deep-link each URL directly (SPA fallback path).
 
 ## Gotchas
 
 - OLL child routes are registered under the lazy `oll-trainer-home` prefix (see `oll-trainer-home.routes.ts`); child paths must be relative (`select`, `cube`), not `oll-trainer-home/select`.
 - Stop the server with `lsof -ti :4299 | xargs kill` (background task will report exit 143 — that's the SIGTERM, not a failure).
+- Angular re-renders **asynchronously** after events: reading the DOM immediately after a Playwright `click()`/`selectOption()` races the render and produces false failures (stale text, missing elements). Poll for the expected DOM state before asserting instead of reading right after the action.
+- Do **not** poll by stamping a sentinel into the DOM (`el.textContent = '__PENDING__'`) and waiting for it to change: overwriting `textContent` destroys the text node the `{{ }}` binding holds a reference to, so Angular's next update goes to a detached node and the wait never resolves. Capture the previous rendered value and wait for it to differ instead.
+- `selectOption('easy')` fails with "did not find some options" on any `[ngValue]` select — Angular encodes those option values as `"0: 'easy'"`, not the bare value. Select by `{ index }` or by label.
