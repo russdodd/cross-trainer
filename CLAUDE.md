@@ -2,6 +2,8 @@
 
 Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross Trainer** (actively used) and an **OLL Trainer** (rarely used). Deployed to Cloudflare Workers on merge to `main`.
 
+Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.md` — check it before proposing improvements.
+
 ## Stack
 
 - Angular 20 / TypeScript 5.9 (upgraded from Angular 10 in July 2026)
@@ -22,15 +24,20 @@ Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross 
 
 ## Cross Trainer (primary feature)
 
-**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click), gets a scramble from a random level in the range, and can reveal the optimal solution (labelled with the picked level).
+**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click) and optionally a first-pair tracking band, gets a scramble from a random level in the range, and can reveal the optimal solution (labelled with the picked level) plus how each F2L pair behaves during it.
 
 **Key files:**
-- `src/app/cross/cross.component.html` — from/to level dropdowns (1–8) + `<app-scramble>`
-- `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From)
+- `src/app/cross/cross.component.html` — from/to level dropdowns (1–8), tracking band dropdown, + `<app-scramble>`
+- `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From) and `trackingBand`
 - `src/app/scramble/scramble.component.ts` — all the logic
 - `src/app/Scrambles.ts` — 8 arrays × 1000 pre-computed scrambles (character-encoded)
+- `src/app/pair-tracking.ts` — first-pair tracking difficulty model (see below)
+- `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features
+- `scripts/analyze-pair-tracking.mjs` — generates the above; the analysis/validation harness
 - `src/app/cstimer/cross.js` — cross solver (ported from cstimer)
 - `src/app/cstimer/kernel.js`, `mathlib.js`, `mersenneTwister.js` — solver support libs
+
+**⚠️ Never modify the `src/app/cstimer/*` files.** They are fragile vendored code with no tests, and busting the solver breaks the whole trainer. Call `cross.solve()` read-only; build any cube maths you need as a separate module.
 
 **Flow:**
 
@@ -39,9 +46,27 @@ Personal speedcubing practice tool. Angular 20 SPA with two features: a **Cross 
 3. Picks `scrambles[level-1][randomIndex]` — a character-encoded scramble string
 4. Decodes each char using `charCodeAt - 'A'.charCodeAt(0)` as an index into `MoveNamesWCA`
 5. Displays the resulting WCA-notation scramble string
-6. "Get Solution" calls `cross.solve(scrambleStr)` → returns array of solution arrays; `sols[1]` is displayed (the first element `sols[0]` is skipped — likely a metadata entry) alongside the picked level ("Solution (Level 6)")
+6. "Get Solution" calls `cross.solve(scrambleStr)` → returns **6 solutions, one per cross face, in order D, U, L, R, F, B** (see `faceStr`, cross.js:210). `sols[1]` is the white/U cross and is what's displayed, alongside the picked level ("Solution (Level 6)"). Its moves are in the **z2-rotated frame** — i.e. as you'd actually execute them after flipping white to the bottom; `moveIdx[1]` (`"FLDBRU"`) is the original→z2 letter mapping.
+7. The pair-tracking reveal is rendered from `PairTrackingData.ts` (a lookup, no extra solving)
 
 **Scramble encoding:** Each character A–R maps to a move index. `MoveNamesWCA = ["R","R2","R'","B","B2","B'","L","L2","L'","F","F2","F'","D","D2","D'","U","U2","U'"]`.
+
+### First-pair tracking difficulty
+
+Grades each scramble by how hard it is to track the first F2L pair through the displayed cross solution. Two axes:
+
+- **Favourability (filter):** a pair is only worth tracking if its **corner ends in the U layer**. Once the cross is solved a corner can only be on top or stuck in an F2L slot (and an edge only in U or an E-slice slot — the cross occupies every D edge slot), so a corner in D always means an extraction.
+- **Disruptions (dial):** how many solution moves displace either piece, counted even if a later move puts it back. A scramble is graded by its **best qualifying pair**, since that's the one a solver would pick. Bands: easy ≤2, medium 3–4, hard 5+.
+
+Levels 1–2 have no hard cases and every level has ~11–16 scrambles with no qualifying pair, so empty band × level combinations are real and the UI shows a message instead of a scramble. Full distribution and rationale: `docs/improvement-ideas.md` §4.
+
+**Regenerating the data** (only needed if the model or thresholds change):
+
+```bash
+node scripts/analyze-pair-tracking.mjs --emit-ts src/app/PairTrackingData.ts
+```
+
+The script is self-validating: it asserts the cross is genuinely solved after applying scramble + solution for all 8000 scrambles (which checks the tracker, the z2 frame mapping and the solver call together), and that the emitted data round-trips. `pair-tracking.spec.ts` asserts the shipped data reproduces the expected distribution — it will fail if the script's encoder and `pair-tracking.ts`'s decoder ever drift apart.
 
 **Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`. These are vendored JS files compiled with `allowJs: true` in tsconfig — they are ES module format and do not have type declarations.
 
@@ -93,6 +118,7 @@ The original deploy was: SSH to a DO droplet → `git pull` → `docker-compose 
 
 ## Known quirks
 
-- `sols[0]` from `cross.solve()` is skipped; `sols[1]` is shown. The solver returns a header/metadata entry at index 0.
+- `cross.solve()` returns one solution per cross face (D, U, L, R, F, B); `sols[1]` — the white cross — is the only one used. `sols[0]` is the D-face (yellow) cross, not metadata.
+- Existing component specs (`CrossComponent`, `AppComponent`, the four `Oll*` ones) fail on `main` due to incomplete TestBed configs (missing `FormsModule` / child declarations). Pre-existing, unrelated to any feature work — 6 failures, 7 passing was the baseline before pair tracking added 8 passing specs.
 - All components use `standalone: false` (NgModule-based architecture) — this is still fully supported in Angular 20 and was chosen to avoid a full standalone migration during the Angular 10→20 upgrade. `angular.json` schematics set `standalone: false` as the default for any newly generated components.
 - `tsconfig.json` has `strictTemplates: false` — a deliberate trade-off made during the upgrade to avoid fixing all template binding types at once. Can be enabled as a follow-up.

@@ -11,6 +11,7 @@
         </label>
             </p>
         </div>
+        <p class="pair-message" *ngIf="message">{{message}}</p>
     </div>
     <div class="wrap">
         <a href="#" class="button home-link" (click)="toggleSolution()">
@@ -24,6 +25,14 @@
                 <label id="solutionText">
           {{solution}}
         </label>
+            </p>
+        </div>
+        <div class="pair-reveal" *ngIf="pairReveal.length">
+            <h3 class="pair-reveal-title">First pair tracking</h3>
+            <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
+                <span class="pair-name">{{p.colors}}</span>
+                <span class="pair-verdict">{{p.verdict}}</span>
+                <span class="pair-evidence">{{p.evidence}}</span>
             </p>
         </div>
     </div>

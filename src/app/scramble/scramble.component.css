@@ -1,0 +1,53 @@
+.pair-message {
+    font-size: 14pt;
+    margin: 0;
+}
+
+.pair-reveal {
+    text-align: left;
+    max-width: 640px;
+    margin: 10px auto 0;
+    font-size: 12pt;
+}
+
+.pair-reveal-title {
+    font-weight: normal;
+    font-size: 14pt;
+    margin-bottom: 8px;
+}
+
+.pair-row {
+    margin: 4px 0;
+    opacity: 0.75;
+}
+
+.pair-recommended {
+    opacity: 1;
+    font-weight: bold;
+}
+
+.pair-name {
+    display: inline-block;
+    min-width: 8em;
+}
+
+.pair-verdict {
+    display: inline-block;
+    min-width: 5.5em;
+}
+
+.pair-evidence {
+    font-weight: normal;
+}
+
+@media (max-width: 600px) {
+    .pair-name,
+    .pair-verdict {
+        display: block;
+        min-width: 0;
+    }
+
+    .pair-row {
+        margin-bottom: 10px;
+    }
+}

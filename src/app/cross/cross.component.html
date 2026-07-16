@@ -10,4 +10,9 @@
         <option *ngFor="let l of maxLevelOptions" [ngValue]="l">up to Level {{l}}</option>
     </select>
 </span>
-<app-scramble [minLevel]="minLevel" [maxLevel]="maxLevel"></app-scramble>
+<span class="custom-dropdown">
+    <select [(ngModel)]="trackingBand" onchange="this.blur();">
+        <option *ngFor="let b of trackingBands" [ngValue]="b.value">{{b.label}}</option>
+    </select>
+</span>
+<app-scramble [minLevel]="minLevel" [maxLevel]="maxLevel" [trackingBand]="trackingBand"></app-scramble>
