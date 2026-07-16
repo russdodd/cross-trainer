@@ -22,7 +22,7 @@ Collect console errors (`page.on('console')` / `page.on('pageerror')`) — Angul
 
 ## Flows worth driving
 
-- **Cross trainer** (`/cross-component`): three dropdowns — two level ones (changing "from" snaps "to" to match; "to" options filtered to ≥ "from") and a first-pair tracking band; "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears with "(Level N)" in the Solution heading, plus four `.pair-row` entries with `.pair-recommended` on the best pair. Band + level combinations that hold no scrambles (e.g. Hard at levels 1–2) are expected: they render `.pair-message` and clear the scramble rather than drawing.
+- **Cross trainer** (`/cross-component`): three dropdowns — two level ones (changing "from" snaps "to" to match; "to" options filtered to ≥ "from") and a first-pair tracking band; "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears with "(Level N)" in the Solution heading, plus four `.pair-row` entries with `.pair-recommended` on the best pair. Band + level combinations that hold no scrambles (e.g. Hard at levels 1–2) are expected: they render `.pair-message` and clear the scramble rather than drawing. `.methodology-toggle`, under the tracking dropdown, expands `.methodology-panel`.
 - **OLL trainer** (`/oll-trainer-home`): "Select" nav link → `/oll-trainer-home/select`, 14 radio buttons; "Trainer" nav link → `/oll-trainer-home/cube`, D3 SVG cube with 27 `rect` stickers. Also deep-link each URL directly (SPA fallback path).
 
 ## Gotchas

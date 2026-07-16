@@ -27,8 +27,8 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 **Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click) and optionally a first-pair tracking band, gets a scramble from a random level in the range, and can reveal the optimal solution (labelled with the picked level) plus how each F2L pair behaves during it.
 
 **Key files:**
-- `src/app/cross/cross.component.html` — from/to level dropdowns (1–8), tracking band dropdown, + `<app-scramble>`
-- `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From) and `trackingBand`
+- `src/app/cross/cross.component.html` — `.controls` flex row (from/to level dropdowns 1–8, tracking band dropdown + its collapsible methodology explainer), + `<app-scramble>`
+- `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From), `trackingBand`, and `showMethodology`
 - `src/app/scramble/scramble.component.ts` — all the logic
 - `src/app/Scrambles.ts` — 8 arrays × 1000 pre-computed scrambles (character-encoded)
 - `src/app/pair-tracking.ts` — first-pair tracking difficulty model (see below)
