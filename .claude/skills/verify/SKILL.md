@@ -22,10 +22,11 @@ Collect console errors (`page.on('console')` / `page.on('pageerror')`) — Angul
 
 ## Flows worth driving
 
-- **Cross trainer** (`/cross-component`): click "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears.
+- **Cross trainer** (`/cross-component`): two level dropdowns (changing "from" snaps "to" to match; "to" options filtered to ≥ "from"); "Get Scramble" → WCA move string appears; "Get Solution" → solution line appears with "(Level N)" in the Solution heading.
 - **OLL trainer** (`/oll-trainer-home`): "Select" nav link → `/oll-trainer-home/select`, 14 radio buttons; "Trainer" nav link → `/oll-trainer-home/cube`, D3 SVG cube with 27 `rect` stickers. Also deep-link each URL directly (SPA fallback path).
 
 ## Gotchas
 
 - OLL child routes are registered under the lazy `oll-trainer-home` prefix (see `oll-trainer-home.routes.ts`); child paths must be relative (`select`, `cube`), not `oll-trainer-home/select`.
 - Stop the server with `lsof -ti :4299 | xargs kill` (background task will report exit 143 — that's the SIGTERM, not a failure).
+- Angular re-renders **asynchronously** after events: reading the DOM immediately after a Playwright `click()`/`selectOption()` races the render and produces false failures (stale text, missing elements). Poll for the expected DOM state before asserting instead of reading right after the action.
