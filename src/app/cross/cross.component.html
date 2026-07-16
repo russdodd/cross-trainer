@@ -15,4 +15,32 @@
         <option *ngFor="let b of trackingBands" [ngValue]="b.value">{{b.label}}</option>
     </select>
 </span>
+<div class="methodology">
+    <a href="#" class="methodology-toggle" (click)="toggleMethodology()">
+        How tracking difficulty works {{ showMethodology ? '▴' : '▾' }}
+    </a>
+    <div class="methodology-panel" *ngIf="showMethodology">
+        <p>
+            <strong>Only pairs whose corner ends on top count.</strong> Once the cross is solved a corner is
+            either on top or buried in a slot, and buried means digging it out first — so those pairs are
+            excluded, however easy they were to follow.
+        </p>
+        <p>
+            <strong>Difficulty is disruptions:</strong> how many moves of the cross solution displace the
+            pair's corner or edge, counted even if a later move puts the piece back.
+        </p>
+        <p>
+            <strong>Each scramble is graded by its best qualifying pair</strong> — the one you'd actually pick.
+        </p>
+        <ul class="methodology-bands">
+            <li><span class="band-name">Easy</span> 0–2 disruptions</li>
+            <li><span class="band-name">Medium</span> 3–4</li>
+            <li><span class="band-name">Hard</span> 5+</li>
+        </ul>
+        <p class="methodology-note">
+            Levels 1–2 have no hard cases — a short cross can't disrupt a pair five times. Reveal the solution
+            to see every pair's counts and where each piece ended up.
+        </p>
+    </div>
+</div>
 <app-scramble [minLevel]="minLevel" [maxLevel]="maxLevel" [trackingBand]="trackingBand"></app-scramble>

@@ -21,6 +21,8 @@ export class CrossComponent {
     { value: 'hard', label: 'Hard first pair to track' },
   ];
 
+  showMethodology = false;
+
   get maxLevelOptions(): number[] {
     return this.levels.filter(l => l >= this.minLevel);
   }
@@ -28,6 +30,11 @@ export class CrossComponent {
   onMinLevelChange(level: number): void {
     this.minLevel = level;
     this.maxLevel = level;
+  }
+
+  toggleMethodology(): boolean {
+    this.showMethodology = !this.showMethodology;
+    return false;
   }
 
 }
