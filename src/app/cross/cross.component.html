@@ -1,24 +1,28 @@
 <h1 class="title">Cross To F2L</h1>
 <h2 class="ritle">A tool to practice cross and transition to F2L</h2>
-<span class="custom-dropdown">
-    <select [ngModel]="minLevel" (ngModelChange)="onMinLevelChange($event)" onchange="this.blur();">
-        <option *ngFor="let l of levels" [ngValue]="l">Level {{l}} – Cross requires {{l}} move{{l === 1 ? '' : 's'}} to solve </option>
-    </select>
-</span>
-<span class="custom-dropdown">
-    <select [(ngModel)]="maxLevel" onchange="this.blur();">
-        <option *ngFor="let l of maxLevelOptions" [ngValue]="l">up to Level {{l}}</option>
-    </select>
-</span>
-<span class="custom-dropdown">
-    <select [(ngModel)]="trackingBand" onchange="this.blur();">
-        <option *ngFor="let b of trackingBands" [ngValue]="b.value">{{b.label}}</option>
-    </select>
-</span>
+<div class="controls">
+    <span class="custom-dropdown">
+        <select [ngModel]="minLevel" (ngModelChange)="onMinLevelChange($event)" onchange="this.blur();">
+            <option *ngFor="let l of levels" [ngValue]="l">Level {{l}} – Cross requires {{l}} move{{l === 1 ? '' : 's'}} to solve </option>
+        </select>
+    </span>
+    <span class="custom-dropdown">
+        <select [(ngModel)]="maxLevel" onchange="this.blur();">
+            <option *ngFor="let l of maxLevelOptions" [ngValue]="l">up to Level {{l}}</option>
+        </select>
+    </span>
+    <span class="tracking-control">
+        <span class="custom-dropdown">
+            <select [(ngModel)]="trackingBand" onchange="this.blur();">
+                <option *ngFor="let b of trackingBands" [ngValue]="b.value">{{b.label}}</option>
+            </select>
+        </span>
+        <a href="#" class="methodology-toggle" (click)="toggleMethodology()">
+            How tracking difficulty works {{ showMethodology ? '▴' : '▾' }}
+        </a>
+    </span>
+</div>
 <div class="methodology">
-    <a href="#" class="methodology-toggle" (click)="toggleMethodology()">
-        How tracking difficulty works {{ showMethodology ? '▴' : '▾' }}
-    </a>
     <div class="methodology-panel" *ngIf="showMethodology">
         <p>
             <strong>Only pairs whose corner ends on top count.</strong> Once the cross is solved a corner is
