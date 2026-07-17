@@ -3,10 +3,8 @@
 
 import { ScrambleComponent } from './scramble.component';
 import { TrackingFeedbackService } from '../tracking-feedback.service';
-import { LineFeedbackService } from '../line-feedback.service';
 
 const STORAGE_KEY = 'cross-trainer.tracking-feedback.v1';
-const LINE_STORAGE_KEY = 'cross-trainer.line-feedback.v2';
 
 describe('ScrambleComponent rating box', () => {
 
@@ -16,9 +14,7 @@ describe('ScrambleComponent rating box', () => {
   beforeEach(() => {
     localStorage.removeItem(STORAGE_KEY);
     feedback = new TrackingFeedbackService();
-    // The line-vote store is a separate experiment; these specs only drive the
-    // pair-tracking rating box, but the constructor needs it.
-    component = new ScrambleComponent(feedback, new LineFeedbackService());
+    component = new ScrambleComponent(feedback);
   });
 
   afterEach(() => {
@@ -128,110 +124,44 @@ describe('ScrambleComponent rating box', () => {
   });
 });
 
-describe('ScrambleComponent line verdict', () => {
+describe('ScrambleComponent experimental line', () => {
 
-  let lineFeedback: LineFeedbackService;
   let component: ScrambleComponent;
 
-  // Level 8 always has an alternative worth judging, so `judgement` is never null.
-  const revealLevel8 = () => {
+  beforeEach(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    component = new ScrambleComponent(new TrackingFeedbackService());
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(STORAGE_KEY);
+  });
+
+  // Level 8 always has an alternative line worth showing.
+  it('reveals the solution and the experimental line', () => {
     component.minLevel = 8;
     component.maxLevel = 8;
     component.newScramble();
     component.toggleSolution();
-  };
-
-  beforeEach(() => {
-    localStorage.removeItem(LINE_STORAGE_KEY);
-    lineFeedback = new LineFeedbackService();
-    component = new ScrambleComponent(new TrackingFeedbackService(), lineFeedback);
-  });
-
-  afterEach(() => {
-    localStorage.removeItem(LINE_STORAGE_KEY);
-    localStorage.removeItem(STORAGE_KEY);
-  });
-
-  it('has nothing to judge before a solution is revealed', () => {
-    component.newScramble();
-
-    expect(component.judgement).toBeNull();
-    expect(component.canSubmitLine).toBe(false);
-  });
-
-  it('cannot submit without picking a verdict', () => {
-    revealLevel8();
-
-    expect(component.judgement).not.toBeNull();
-    expect(component.canSubmitLine).toBe(false);
-    component.submitLineVote();
-    expect(lineFeedback.count()).toBe(0);
-  });
-
-  it('records the verdict with the lines it was judging', () => {
-    revealLevel8();
-    const j = component.judgement!;
-
-    component.selectLineVerdict('better');
-    component.submitLineVote();
-
-    const row = lineFeedback.all()[0];
-    expect(row.verdict).toBe('better');
-    expect(row.movesRecommended).toBe(j.movesRecommended);
-    expect(row.holdRecommended).toBe(j.holdRecommended);
-    expect(row.movesSolver).toBe(j.movesSolver);
-    expect(row.ergoRecommended).toBe(j.ergoRecommended);
-    expect(row.level).toBe(8);
-  });
-
-  // A "worse" verdict is the whole point of collecting these — it must record as
-  // readily as agreement does.
-  it('records a dissenting verdict just the same', () => {
-    revealLevel8();
-
-    component.selectLineVerdict('worse');
-    component.submitLineVote();
-
-    expect(lineFeedback.all()[0].verdict).toBe('worse');
-  });
-
-  it('does not record a second verdict for the same reveal', () => {
-    revealLevel8();
-    component.selectLineVerdict('better');
-    component.submitLineVote();
-    component.submitLineVote();
-
-    expect(lineFeedback.count()).toBe(1);
-  });
-
-  it('ignores a verdict change after submitting', () => {
-    revealLevel8();
-    component.selectLineVerdict('better');
-    component.submitLineVote();
-
-    component.selectLineVerdict('worse');
-
-    expect(component.lineVerdict).toBe('better');
-    expect(lineFeedback.all()[0].verdict).toBe('better');
-  });
-
-  it('clears the verdict when a new scramble is drawn', () => {
-    revealLevel8();
-    component.selectLineVerdict('better');
-    component.submitLineVote();
-
-    component.newScramble();
-
-    expect(component.lineVoted).toBe(false);
-    expect(component.lineVerdict).toBeNull();
-    expect(component.judgement).toBeNull();
-  });
-
-  it('reveals the solution and the experimental line without any gating', () => {
-    revealLevel8();
 
     expect(component.solution).not.toBe('');
     expect(component.humanReveal).not.toBeNull();
     expect(component.pairReveal.length).toBe(4);
+  });
+
+  // Hiding then re-showing must reuse the cached solve, not recompute it.
+  it('reuses the cached solve across hide/show', () => {
+    component.minLevel = 8;
+    component.maxLevel = 8;
+    component.newScramble();
+    component.toggleSolution();
+    const line = component.humanReveal!.moves;
+    const hold = component.humanReveal!.holdColour;
+
+    component.toggleSolution(); // hide
+    component.toggleSolution(); // show again
+
+    expect(component.humanReveal!.moves).toBe(line);
+    expect(component.humanReveal!.holdColour).toBe(hold);
   });
 });

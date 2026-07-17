@@ -74,7 +74,6 @@ The cube analysis lives outside the app, in `scripts/`, and is self-validating â
 ```bash
 node scripts/analyze-cross-ranking.mjs            # what the experimental ranker changes
 node scripts/analyze-pair-tracking.mjs            # first-pair tracking difficulty model
-node scripts/analyze-line-votes.mjs <votes.csv>   # line verdicts exported from dev tools
 ```
 
 ## Further help

@@ -69,13 +69,6 @@
     opacity: 0.7;
 }
 
-.dev-tools-hint {
-    font-size: 10pt;
-    opacity: 0.6;
-    margin: 6px 0 0;
-}
-
-
 .pair-reveal {
     text-align: left;
     max-width: 640px;

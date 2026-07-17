@@ -173,9 +173,11 @@ Scoring is now `ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over ca
 
 **The lesson, twice over:** the cognitive-load idea was intuitive and both attempts to operationalise it failed — the first inert, the second real but dominated. **Ergonomics and the hold are the whole win.** If staging is revisited, it needs a different experiment: A/B two lines matched on ergonomics but far apart on staging, so the idea is judged on its own rather than as a tiebreaker that never breaks anything.
 
-### Line verdicts — ✅ DONE (July 2026)
+### Line verdicts — built then removed (July 2026)
 
-`EXTRA_MOVE_MARGIN` (1.5) was calibrated from score distributions, not hands. The dev tools now carry a **better / about the same / worse** box on the experimental line, stored via `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` slices by `holdsOnly`, `extraMoves`, and by face.
+**Removed** after the user judged the experimental line reliably better in hand: the vote had stopped earning its complexity, so `line-feedback.service.ts`, its box, and `scripts/analyze-line-votes.mjs` were deleted. The analysis below is kept as the record of why it existed and why an open preference test is hard to trust — restore from git history rather than rebuilding if the ranker ever needs re-validating against real hands.
+
+`EXTRA_MOVE_MARGIN` (1.5) was calibrated from score distributions, not hands. The dev tools carried a **better / about the same / worse** box on the experimental line, stored via `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` sliced by `holdsOnly`, `extraMoves`, and by face.
 
 **It shipped as a blind A/B first, and the blinding lasted one session.** User's verdict: *"It's super obvious which blind is computer vs ergonomic."* And they're right — blinding only works when the options carry no tell, and these do: the solver's line is F/B-heavy, ours is R/U-heavy. Randomising the sides fooled nobody, cost the reader the context of knowing which was which, and required withholding the whole reveal (solution, experimental panel, pair tracking) until a vote landed — a lot of machinery for a disguise anyone could see through. Removed; the storage key went to `v2` rather than migrating, since the v1 rows answered a different question.
 

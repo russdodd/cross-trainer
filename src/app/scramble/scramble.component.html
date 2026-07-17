@@ -60,22 +60,4 @@
             <a href="#" class="dev-tools-clear" (click)="clearFeedback()">Clear</a>
         </p>
     </div>
-    <div class="dev-tools">
-        <h3 class="dev-tools-title">Dev tools — is the experimental line better?</h3>
-        <div class="dev-tools-rating" *ngIf="judgement && !lineVoted">
-            <a href="#" class="rating-option" *ngFor="let v of lineVerdicts" [class.rating-selected]="lineVerdict === v.value" (click)="selectLineVerdict(v.value)">
-        {{ v.label }}
-      </a>
-            <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmitLine" (click)="submitLineVote()">Submit</a>
-        </div>
-        <p class="dev-tools-recorded" *ngIf="lineVoted">Recorded ✓ — get a new scramble to rate again.</p>
-        <p class="dev-tools-hint" *ngIf="!judgement && !lineVoted">
-            {{ solution ? 'Nothing to judge here — the experimental line is the solver’s own, in the same hold.' : 'Reveal a solution to rate its experimental line.' }}
-        </p>
-        <p class="dev-tools-footer">
-            <span class="dev-tools-count">{{ lineFeedbackCount }} verdict{{ lineFeedbackCount === 1 ? '' : 's' }} recorded</span>
-            <a href="#" (click)="downloadLineCsv()">Download CSV</a>
-            <a href="#" class="dev-tools-clear" (click)="clearLineFeedback()">Clear</a>
-        </p>
-    </div>
 </ng-container>

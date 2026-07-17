@@ -12,7 +12,6 @@ import {
   TrackingBand,
 } from '../pair-tracking';
 import { Rating, TrackingFeedbackService } from '../tracking-feedback.service';
-import { LineVerdict, LineFeedbackService } from '../line-feedback.service';
 import { ergonomics, recommend, FRONT_COLOURS } from '../cross-ranker/cross-ranker.js';
 
 export interface PairReveal {
@@ -39,26 +38,6 @@ interface SolveResult {
   solverLine: string[];
   solution: string;
   best: any;
-}
-
-/**
- * What a verdict is judging: the experimental line against the solver's.
- *
- * This was a blind A/B until July 2026. Blinding only works if the two options
- * have no tell, and these do — the solver's line is F/B-heavy and the
- * recommendation is R/U-heavy, so which is which is obvious on sight. The
- * randomisation bought nothing and cost the reader context, so it went.
- */
-interface LineJudgement {
-  /** Null when the recommendation IS the solver's line, in its hold — nothing to judge. */
-  holdsOnly: boolean;
-  extraMoves: number;
-  ergoRecommended: number;
-  ergoSolver: number;
-  movesRecommended: string;
-  holdRecommended: string;
-  movesSolver: string;
-  holdSolver: string;
 }
 
 @Component({
@@ -101,22 +80,10 @@ export class ScrambleComponent {
     // again doesn't pretend it was never seen.
     private revealedThisScramble = false;
 
-    public judgement: LineJudgement | null = null;
-    public lineVerdict: LineVerdict | null = null;
-    public lineVoted = false;
-    public lineFeedbackCount = 0;
-    public lineVerdicts: { value: LineVerdict, label: string }[] = [
-        { value: 'better', label: 'Better' },
-        { value: 'same', label: 'About the same' },
-        { value: 'worse', label: 'Worse' },
-    ];
-
     constructor(
         private feedback: TrackingFeedbackService,
-        private lineFeedback: LineFeedbackService,
     ) {
         this.feedbackCount = this.feedback.count();
-        this.lineFeedbackCount = this.lineFeedback.count();
     }
 
     newScramble() {
@@ -167,48 +134,6 @@ export class ScrambleComponent {
         this.solutionLevel = this.scrambleLevel;
         this.pairReveal = this.buildPairReveal();
         this.humanReveal = this.buildHumanReveal(solverLine, best);
-        this.judgement = this.buildJudgement(solverLine, best);
-        return false;
-    }
-
-    selectLineVerdict(verdict: LineVerdict): boolean {
-        if (!this.lineVoted) {
-            this.lineVerdict = verdict;
-        }
-        return false;
-    }
-
-    get canSubmitLine(): boolean {
-        return !!this.judgement && this.lineVerdict !== null && !this.lineVoted;
-    }
-
-    submitLineVote(): boolean {
-        if (!this.canSubmitLine) {
-            return false;
-        }
-        this.lineFeedback.record({
-            timestamp: new Date().toISOString(),
-            level: this.scrambleLevel,
-            scrambleIndex: this.scrambleIndex,
-            scramble: this.scramble,
-            verdict: this.lineVerdict!,
-            ...this.judgement!,
-        });
-        this.lineVoted = true;
-        this.lineFeedbackCount = this.lineFeedback.count();
-        return false;
-    }
-
-    downloadLineCsv(): boolean {
-        this.download(this.lineFeedback.toCsv(), 'line-votes');
-        return false;
-    }
-
-    clearLineFeedback(): boolean {
-        if (confirm(`Delete all ${this.lineFeedbackCount} line votes? This cannot be undone.`)) {
-            this.lineFeedback.clear();
-            this.lineFeedbackCount = 0;
-        }
         return false;
     }
 
@@ -312,9 +237,6 @@ export class ScrambleComponent {
         this.solutionLevel = 0;
         this.pairReveal = [];
         this.humanReveal = null;
-        this.judgement = null;
-        this.lineVerdict = null;
-        this.lineVoted = false;
     }
 
     private levelRangeText(): string {
@@ -379,33 +301,6 @@ export class ScrambleComponent {
             moves: best.moves.join('  '),
             holdColour: best.holdColour,
             evidence: parts.join(' · '),
-        };
-    }
-
-    /**
-     * The context a verdict is recorded against.
-     *
-     * Null when there is genuinely nothing to judge: the ranker picked the solver's
-     * own line, in the solver's own hold, so a verdict would be comparing a line
-     * with itself.
-     */
-    private buildJudgement(solverLine: string[], best: any): LineJudgement | null {
-        if (!best) {
-            return null;
-        }
-        const holdsOnly = best.base.join(' ') === solverLine.join(' ');
-        if (holdsOnly && best.holdColour === FRONT_COLOURS[0]) {
-            return null;
-        }
-        return {
-            holdsOnly,
-            extraMoves: best.extraMoves,
-            ergoRecommended: best.ergo,
-            ergoSolver: ergonomics(solverLine),
-            movesRecommended: best.moves.join('  '),
-            holdRecommended: best.holdColour,
-            movesSolver: solverLine.join('  '),
-            holdSolver: FRONT_COLOURS[0],
         };
     }
 

@@ -35,10 +35,10 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 - `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features
 - `scripts/analyze-pair-tracking.mjs` — generates the above; the analysis/validation harness
 - `src/app/tracking-feedback.service.ts` — dev tools rating store (see below)
-- `src/app/line-feedback.service.ts` — dev tools line-verdict store (see below)
-- `scripts/analyze-line-votes.mjs` — reads an exported line-votes CSV and reports agreement
 - `src/app/cross-ranker/` — **experimental** human-optimal solution ranking (see below)
-- `scripts/analyze-cross-ranking.mjs` — its analysis/validation harness
+- `scripts/analyze-cross-ranking.mjs` — its analysis/validation harness; also emits the README charts
+- `scripts/impact-chart.mjs` — the README chart's SVG renderer; `scripts/render-impact-charts.mjs` re-renders it from saved numbers
+- `docs/img/` — **generated**; the README's impact charts (light + dark SVG) and the JSON they were drawn from
 - `src/app/cstimer/cross.js` — cross solver (ported from cstimer)
 - `src/app/cstimer/kernel.js`, `mathlib.js`, `mersenneTwister.js` — solver support libs
 
@@ -110,6 +110,14 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 
 **Cost:** distance table ~40ms once; ranking is <20ms at typical levels but **~0.6s at level 8** (up to ~39k candidates × 4 holds). Runs on solution reveal, not scramble draw. If it ever feels janky, prefilter with a cheap weight table before algSpeed.
 
+**Regenerating the README charts:**
+
+```bash
+node scripts/analyze-cross-ranking.mjs --all --emit-charts docs/img   # ~10 min — background it
+```
+
+`--emit-charts` refuses to run without `--all` (it fails fast): the figures are published, and a sample would publish sampling noise as fact. Emitting from this run is deliberate — the same pass asserts every recommended line actually solves the cross, so a chart can't drift from the code. It also writes the numbers as JSON, so a **restyle** (wording, colours) re-renders in a second with `node scripts/render-impact-charts.mjs` instead of costing another full run.
+
 **Not wired into pair tracking.** `PairTrackingData.ts` describes the *solver's* line and was deliberately not regenerated, so the UI labels which panel describes which line. Revisit only if the experiment graduates.
 
 **Measured: extra moves don't pay.** Gain from allowing N extra moves, vs the best optimal-length line across all 4 holds (levels 3–6, 80 scrambles):
@@ -122,15 +130,9 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 
 **Don't build +2/+3** — they're monotonically worse and their best cases *shrink*, because algSpeed already charges each extra move's turning time and smoother fingertricks rarely repay it. (XCross is the thing that makes extra moves pay, because they buy an F2L pair; a plain cross only buys smoothness.) +1 survives only for the 9% that clear the margin.
 
-### Line verdicts (dev tools)
+### Line verdicts — removed (July 2026)
 
-`line-feedback.service.ts` + the "is the experimental line better?" box exist because the ranking is a model of ergonomics, not a measurement of yours. A verdict (**better / about the same / worse**) is effectively a referendum on **algSpeed + the hold choice** — that is all the ranker uses.
-
-**This was a blind A/B until July 2026, and the blinding was dropped as theatre.** Blinding only works when the options have no tell, and these have an obvious one: the solver's line is F/B-heavy and the recommendation is R/U-heavy, so anyone who knows what the tool does can spot which is which instantly. The randomisation fooled nobody and cost the reader the context of knowing which line was which. What's left is an open preference report — which does carry some pull toward the tool's own pick, so read a high "better" rate with that in mind. The **"worse"** rows and the by-face slices are the parts that can still surprise us.
-
-Worth knowing when reading the results: algSpeed is one hobbyist's model of one grip style, and it was built to score OLL/PLL algs from a settled home grip — not cross lines executed cold out of inspection, full of D moves, with no AUF. That domain transfer is untested, so a disagreement can legitimately mean the model is wrong for these hands, not that the voter is.
-
-Separate store from `tracking-feedback.service.ts` on purpose: that rates how hard a pair is to **track**, this rates how nice a line is to **turn**. One store per question keeps both answerable. The key is `…line-feedback.v2` — v1 held the old A/B shape and was abandoned rather than migrated, since those rows answered a different question. Export the CSV and run `node scripts/analyze-line-votes.mjs <csv>` — it slices by `holdsOnly` (is the hold advice real on its own?), `extraMoves` (is the margin right?), and **by face** (does "worse" spike on B/L — an undrilled fingertrick — or is it flat, which points at the model?).
+There used to be a "is the experimental line better?" dev-tools box (`line-feedback.service.ts`, `scripts/analyze-line-votes.mjs`, a `better / about the same / worse` vote) collecting evidence on whether the ranker's line beat the solver's. It was **removed** once the user judged the experimental line reliably better in hand — the vote had stopped earning its complexity. It started as a blind A/B, lost the blinding (a tell was obvious: solver lines are F/B-heavy, recommendations R/U-heavy), and finally went entirely. If the ranker ever needs re-validating against real hands, restore it from git history rather than rebuilding: the design notes on why an open preference report is biased toward the tool's own pick, and why the "worse" rows and by-face slices were the informative part, are in that history and in `docs/improvement-ideas.md` §5.
 
 Measured effect over all 8000 scrambles (see `docs/improvement-ideas.md` §5 and the README charts): **49%** get a genuinely different line (0% at level 1, 99% at level 8); a further **35%** get the solver's own line in a better hold (`L D L` → `R D R` — the same solve from a better angle, and the free win); **4%** spend an extra move. Ergo gain averages ~5 at levels 7–8; F/B moves drop 3.23 → 2.83 at level 8.
 
