@@ -39,7 +39,7 @@
                     </span>
                 </summary>
                 <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
-                    <span class="pair-name">
+                    <span class="pair-name" *ngIf="!p.recommended">
                         <span class="pair-swatch" *ngFor="let c of p.colors.split('-')" [ngClass]="'swatch-' + c"></span>
                         {{p.colors}}
                     </span>
