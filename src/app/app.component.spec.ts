@@ -37,4 +37,14 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
     expect(compiled.querySelector('footer')?.textContent).toContain('built by russ dodd');
   });
+
+  // The deploy marker: refreshing after a deploy shows the new build time.
+  it('renders a version tag', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const tag = fixture.nativeElement.querySelector('.version-tag');
+
+    expect(tag).toBeTruthy();
+    expect(tag.textContent.trim().length).toBeGreaterThan(0);
+  });
 });

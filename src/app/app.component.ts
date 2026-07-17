@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { VERSION } from './version';
 
 @Component({
   standalone: false,
@@ -8,4 +9,5 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   title = 'cube-trainer';
+  version = VERSION;
 }
