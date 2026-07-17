@@ -93,7 +93,13 @@ export function crossEdgesAfterScramble(scrambleStr) {
   });
 }
 
-/** True once every cross edge is home and correctly oriented. */
+/**
+ * True once every cross edge is home and correctly oriented.
+ *
+ * Deliberately STRICT — unlike solvedCountAligned below. A cross that is ordered
+ * but not aligned to the centres is not solved, and the validation harness leans
+ * on this meaning exactly that.
+ */
 export function crossSolved(state) {
   return state.every((edge, i) => sameEdge(edge, CROSS_EDGES[i].home));
 }
@@ -101,20 +107,57 @@ export function crossSolved(state) {
 const solvedCount = (state) => state.filter((edge, i) => sameEdge(edge, CROSS_EDGES[i].home)).length;
 
 /**
+ * How many cross edges are effectively done, ignoring how the cross is rotated.
+ *
+ * A cross edge that is on the bottom, white down and in the right order relative
+ * to the others is finished as far as the solver is concerned: one D at the end
+ * aligns the whole cross to the centres, and nobody tracks those pieces in the
+ * meantime. Counting only exact positions marks them unsolved right up until that
+ * final turn, which reads a staged solve as "everything lands at once".
+ *
+ * So: take the best single D offset and count what is home under it. This is
+ * self-limiting in the right way — a lone D edge scores 1 from whichever offset
+ * suits it, but two D edges in the wrong relative order still score 1, never 2,
+ * because no single offset can place both.
+ */
+export const solvedCountAligned = (state) => {
+  let best = 0;
+  for (let k = 0; k < 4; k++) {
+    best = Math.max(best, solvedCount(state.map((edge) => applyMove(edge, 'D', k))));
+  }
+  return best;
+};
+
+/**
  * Walk a solution, measuring how it gets to the cross.
  *
- * `staged` is the cognitive-load signal: the area under the "edges solved so far"
- * curve, normalised so 1 means everything was already done and 0 means nothing
- * lands until the final move. Higher is easier to hold in your head, because the
- * cross gets built in stages rather than every piece interacting at once:
+ * `staged` is the cognitive-load signal: the area under the "edges done so far"
+ * curve (alignment-tolerant, see solvedCountAligned), normalised so 1 means
+ * everything was already done and 0 means nothing lands until the final move.
+ * Higher is easier to hold in your head, because the cross gets built in stages
+ * rather than every piece interacting at once:
  *
- *   F' L B R' F U R2 U  -> progress 0,1,2,2,3,3,4,4  staged 0.59  (staged)
- *   D' U' B' L' R' F R2 D' -> progress 0,0,0,0,0,0,0,4  staged 0.13  (all at once)
+ *   F2 D' B' D'          -> progress 3,3,4,4         staged 0.88  (staged)
+ *   F R B L' B2 R2 F D'  -> progress 0,0,0,1,2,3,4,4 staged 0.44
+ *   F R2 B2 U B R F L'   -> progress 0,0,0,0,1,2,3,4 staged 0.31  (all at once)
+ *
+ * (Reproducible as the solver's line for Scrambles.ts [level][index] 4[14], 8[0]
+ * and 8[5] respectively.)
+ *
+ * The first is why alignment tolerance matters: three edges are in the right
+ * relative order from move one and the final D' is pure alignment, but counting
+ * exact positions scored it 0,0,0,4 = 0.25 — "everything at once", the precise
+ * opposite of what it is. That misread hit 57% of solutions and understated
+ * staged by ~0.16 on average, against a candidate spread of only ~0.25. It also
+ * fooled this docstring: 8[0] used to be cited here as the showcase for "all at
+ * once" at 0.13, and it is nothing of the kind.
  *
  * `breaks` (a placed edge being disturbed again) is reported as evidence, but it
  * is a poor ranking signal on its own - optimal cross solutions almost never
- * break a placed edge, so it is 0 for nearly every candidate. `staged` subsumes
- * it anyway: breaking an edge pushes the progress curve back down.
+ * break a placed edge, so it is 0 for nearly every candidate. It stays on exact
+ * positions deliberately: "this move undid a piece I had placed" is about the
+ * literal piece, not about the cross's rotation. `staged` subsumes it anyway,
+ * since breaking an edge pushes the progress curve back down.
  */
 export function trackSolution(scrambleStr, solutionTokens) {
   let state = crossEdgesAfterScramble(scrambleStr);
@@ -129,7 +172,7 @@ export function trackSolution(scrambleStr, solutionTokens) {
       }
     }
     state = next;
-    solvedAfter.push(solvedCount(state));
+    solvedAfter.push(solvedCountAligned(state));
   }
   const staged = solutionTokens.length
     ? solvedAfter.reduce((a, b) => a + b, 0) / (CROSS_EDGES.length * solutionTokens.length)

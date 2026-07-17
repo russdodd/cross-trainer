@@ -107,7 +107,8 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
   | 8     | 98%           | 5.31          | 3.28 → 2.87 | 0.25 → 0.35 |
 
 - **The hold is the free win.** Often the moves don't change at all — only the hold does. `L D L` becomes `R D R` by holding blue in front (ergo 5.6 → 3.5). Same physical solution, zero cost. Recommended holds come out evenly spread (green 29%, red 25%, orange 24%, blue 22%), which is what you'd expect if the advice is real.
-- **The first cognitive-load metric was junk.** "Breaks an already-placed edge" is ~0 for nearly every optimal cross solution, so it ranked nothing. Replaced by `staged`: the area under the "edges solved so far" curve, which discriminates on 100% of scrambles. `F' L B R' F U R2 U` (progress 0,1,2,2,3,3,4,4) vs `D' U' B' L' R' F R2 D'` (0,0,0,0,0,0,0,4) — the second is exactly the "boils the ocean" case.
+- **The first cognitive-load metric was junk.** "Breaks an already-placed edge" is ~0 for nearly every optimal cross solution, so it ranked nothing. Replaced by `staged`: the area under the "edges done so far" curve, which discriminates on 100% of scrambles.
+- **The second one was subtly wrong too — see below.** It counted exact edge positions, which misreads an ordered-but-unaligned cross.
 - **+1 lines need a margin.** algSpeed already prices the extra move's turning time, so without a margin a +1 line wins on noise (8.0 vs 7.9 — an extra move for nothing). `EXTRA_MOVE_MARGIN = 1.5` charges it for the memory load algSpeed doesn't model; +1 usage drops 35% → 6%, keeping only clear wins like `F2 B2 R` (9.0) → `R2 L' F L'` (4.6).
 - **Cost:** ~0.6s at level 8 (up to 39k candidates × 4 holds), <20ms at typical levels. Runs on reveal.
 
@@ -117,7 +118,56 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **Verification:** the analysis asserts every recommended line solves the cross by two independent routes — our own tracker, and `cross.solve()` on scramble + solution — across all sampled scrambles and levels.
 
-**Open questions / next:** tune `STAGING_WEIGHT` (1.0) and `EXTRA_MOVE_MARGIN` (1.5) against real solves; consider extending the dev-tools rating harness to rate the *recommended line* (kept separate for now so it doesn't muddy the tracking-difficulty data); F2L-pair preservation as a ranking term is still deferred (the tracker makes it cheap now).
+### Extra moves: measured, and mostly against the idea (July 2026)
+
+The founding hunch was "sometimes a 9-move line beats an 8-move one". The user then asked the sharper question — how does +1 compare to +0 across the board, and would +2/+3 help? Gain = how much better the best line gets if you allow N extra moves, measured against the best **optimal-length** line across all 4 holds, so it isolates what the extra move itself buys (levels 3–6, 80 scrambles):
+
+| extra | avg gain | best case | % beats +0 at all | % beats by >1.5 |
+|-------|----------|-----------|-------------------|-----------------|
+| +1    | 0.02     | 2.50      | 39%               | 9%              |
+| +2    | −0.39    | 2.00      | 28%               | 4%              |
+| +3    | −0.86    | 1.60      | 23%               | 1%              |
+
+- **+1 is marginal**: 0.02 ergo on average — less than a single R move (0.80). It's a rare-but-real win: 9% of scrambles clear the 1.5 margin, worth up to 2.50.
+- **+2/+3 are strictly worse**, and not just on average — their *best cases shrink* (2.50 → 2.00 → 1.60) and they win less often. **Don't build them.** Each extra move costs turning time that algSpeed already charges, and smoother fingertricks rarely repay it.
+- **The user's XCross suspicion was correct.** XCross adds moves to also solve an F2L pair — the extra moves buy a *pair*. Adding moves to a plain cross buys only smoothness, which doesn't cover the cost. Cross walkthroughs that "add a bunch of moves" are almost certainly doing XCross.
+- **Is the 1.5 margin huge?** No — algSpeed is unbounded and time-like (a 7-move cross scores ~9–16) and one move costs 0.80 (R) to 3.50 (B), so 1.5 ≈ one L move. The real story is that +1 barely does anything regardless.
+
+**Verdict:** keep +1 with the margin (it's the 9% that prompted the whole idea), never build +2/+3.
+
+### The `staged` metric was measuring the wrong thing — fixed (July 2026)
+
+Found by the user before any votes were collected, which mattered: the harness exists to calibrate `STAGING_WEIGHT`, and it would have calibrated against a broken signal.
+
+**The bug:** `solvedCount` tested exact absolute position. But a cross edge on the bottom, white down, in correct *relative* order is effectively done — the solver stops thinking about it and aligns the whole cross with one D at the end. Counting exact positions marked those pieces unsolved until that final turn, so a solution that was three-quarters done from move one read as "everything lands at once".
+
+**Fix:** `staged`/`solvedAfter` use `solvedCountAligned` — the most edges simultaneously home under a single best D offset. Self-limiting: two bottom edges in the wrong relative order credit 1, not 2. `crossSolved` stays strict, since the validation harness needs "solved" to mean aligned.
+
+**Evidence (960 scrambles, solver's line), independently reproduced:**
+
+| | exact | alignment-tolerant |
+|---|---|---|
+| mean staged | 0.530 | 0.693 |
+| systematic understatement | | 0.163 |
+| solutions where the two disagree | | 56.5% |
+| solutions ending in a purely-aligning D | | 18.4% |
+
+Worked case (Scrambles.ts 4[14], solver's line `F2 D' B' D'`): progress was `0,0,0,4` = 0.25 ("all at once"); it is really `3,3,4,4` = 0.88. Three edges are ordered from move one and the trailing `D'` is pure alignment. The old docstring's own showcase for "all at once" (8[0], cited at 0.13) was the same misread — it's actually `0,0,0,1,2,3,4,4` = 0.44.
+
+**Consequences:**
+
+- Candidate spread shrank 0.38 → **0.25**, so `STAGING_WEIGHT` went 1.0 → **1.5** to keep the intended ~0.38 max score shift.
+- **Only ~7% of recommendations changed** (0% at level 3, ~12% at level 7). The metric is now right on 57% of solutions it misread, but the staging term is dominated by ergonomics, so few picks move.
+- **The old metric flattered the feature.** It showed recommendations *improving* staged (level 8: 0.25 → 0.34). Corrected, they slightly *reduce* it (0.44 → 0.40): the ranker trades a little staging for a lot of ergonomics (+5.03 at level 8). That's a defensible trade, but it's the honest picture.
+- **Staging is close to inert**: at 1.5 it changes ~1% of picks, and only ever breaks genuine ties. Ergonomics and the hold are what make the recommendations good.
+
+### Blind line voting — ✅ DONE (July 2026)
+
+`STAGING_WEIGHT` (1.0) and `EXTRA_MOVE_MARGIN` (1.5) were calibrated from score distributions, not hands. The dev tools now carry a **blind line comparison** mode: with it on, "Get Solution" shows only an A/B of the recommended line vs the solver's, sides randomised, everything else withheld (including pair tracking, which would leak the solver's line). Vote, then everything reveals along with which side was which — blind while judging, transparent afterwards.
+
+Votes go to `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` slices agreement by `holdsOnly` (is the hold advice real on its own?) and `extraMoves` (is the margin right?).
+
+**Open questions / next:** collect votes and set the two weights from them; F2L-pair preservation as a ranking term is still deferred (the tracker makes it cheap now).
 
 ## Smaller / future ideas
 

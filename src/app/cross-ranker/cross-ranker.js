@@ -25,11 +25,23 @@ import { trackSolution } from './cube-tracker.js';
  * How much a fully staged solution (staged=1) is worth in algSpeed units.
  *
  * Deliberately small: ergonomics decides, staging only breaks ties. Candidate
- * staged values typically span ~0.38, so at 1.0 this shifts a score by ~0.4 -
- * enough to separate ergonomically similar lines, not enough to override a real
- * ergonomic difference. Set to 0 to disable staging entirely.
+ * staged values span ~0.25, so at 1.5 this shifts a score by ~0.38 - enough to
+ * separate ergonomically similar lines, not enough to override a real ergonomic
+ * difference. Set to 0 to disable staging entirely.
+ *
+ * Was 1.0 when `staged` counted exact edge positions and spanned ~0.38; the
+ * alignment-tolerant fix shrank the spread to ~0.25, so the weight rose to keep
+ * the same intended influence.
+ *
+ * Measured, and worth knowing before leaning on it: this term is close to inert.
+ * At 1.5 it changes ~1% of picks (2.5 changes ~4%), and where it does, the
+ * ergonomic and staged deltas are both ~0.00 - i.e. it only ever separates
+ * genuine ties, because ergonomic differences between candidates are far larger
+ * than 0.25. That is the design working as intended, not a bug, but it means the
+ * staged signal is not what makes the recommendations good. The blind line votes
+ * (line-feedback.service.ts) are the way to settle whether it should be stronger.
  */
-export const STAGING_WEIGHT = 1.0;
+export const STAGING_WEIGHT = 1.5;
 
 /**
  * What each extra move must earn, in algSpeed units, to be worth showing.

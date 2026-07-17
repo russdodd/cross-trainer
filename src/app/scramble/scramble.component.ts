@@ -365,7 +365,9 @@ export class ScrambleComponent {
             parts.push(`a different line, same ${best.length} moves`);
         }
         parts.push(`turn speed ${best.ergo.toFixed(1)} vs ${solverErgo.toFixed(1)} (lower is faster)`);
-        parts.push(`cross builds up ${best.solvedAfter.join(', ')}`);
+        // Edges "done" ignores how the cross is rotated: an edge on the bottom in
+        // the right relative order is finished, bar the final aligning D.
+        parts.push(`edges done as you go: ${best.solvedAfter.join(', ')} (ignoring final alignment)`);
 
         return {
             moves: best.moves.join('  '),
