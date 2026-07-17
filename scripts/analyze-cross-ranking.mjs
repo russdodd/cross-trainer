@@ -15,15 +15,23 @@
 // Usage:
 //   node scripts/analyze-cross-ranking.mjs                # 150 scrambles/level
 //   node scripts/analyze-cross-ranking.mjs --sample 400
-//   node scripts/analyze-cross-ranking.mjs --all          # all 8000 (slow, ~13 min)
+//   node scripts/analyze-cross-ranking.mjs --all          # all 8000 (slow, ~10 min)
 //   node scripts/analyze-cross-ranking.mjs --samples 25   # worked examples to print
+//   node scripts/analyze-cross-ranking.mjs --all --emit-charts docs/img
+//                                                         # regenerate the README charts
+//
+// The charts are emitted from this run on purpose: the same pass that draws them
+// is the one that asserts every recommended line actually solves the cross, so a
+// published figure can never come from numbers nobody validated. Regenerate with
+// --all - a sampled run would publish sampling noise as fact.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { renderImpactChart } from './impact-chart.mjs';
 import { cross } from '../src/app/cstimer/cross.js';
 import { distanceTable } from '../src/app/cross-ranker/cross-states.js';
-import { rankSolutions, EXTRA_MOVE_MARGIN } from '../src/app/cross-ranker/cross-ranker.js';
+import { rankSolutions, EXTRA_MOVE_MARGIN, FRONT_COLOURS } from '../src/app/cross-ranker/cross-ranker.js';
 import { selfCheck, crossEdgesAfterScramble, crossSolved, applyMove, parseMove } from '../src/app/cross-ranker/cube-tracker.js';
 import { algSpeed } from '../src/app/cross-ranker/algSpeed.js';
 
@@ -44,6 +52,12 @@ const arg = (name, fallback) => {
 };
 const PER_LEVEL = process.argv.includes('--all') ? 1000 : arg('--sample', 150);
 const N_SAMPLES = arg('--samples', 15);
+const emitIdx = process.argv.indexOf('--emit-charts');
+const EMIT_CHARTS = emitIdx === -1 ? null : process.argv[emitIdx + 1];
+// Fail before the ~10 minute run, not after it.
+if (EMIT_CHARTS && PER_LEVEL < 1000) {
+  throw new Error(`--emit-charts needs --all: a ${PER_LEVEL}/level sample would publish sampling noise to the README`);
+}
 
 // z2 is its own inverse, so the same map takes a solving-frame move back to the
 // WCA (white-top) frame the scramble is written in.
@@ -95,7 +109,7 @@ function analyze() {
   for (let level = 1; level <= 8; level++) {
     const stride = Math.max(1, Math.floor(1000 / PER_LEVEL));
     const stats = {
-      level, n: 0, changed: 0, usedExtra: 0, holds: {}, ergoGain: [], fbBefore: 0, fbAfter: 0,
+      level, n: 0, changed: 0, reheldOnly: 0, usedExtra: 0, holds: {}, ergoGain: [], fbBefore: 0, fbAfter: 0,
       candidates: 0, ms: 0,
     };
 
@@ -119,7 +133,13 @@ function analyze() {
 
       stats.n++;
       stats.candidates += candidateCount;
-      if (best.base.join(' ') !== current.join(' ')) stats.changed++;
+      // `base` is the canonical green-front statement of a line, so a difference
+      // there is a genuinely different set of turns. Same base + a different hold
+      // is the SAME physical solve, just described from another angle - counted
+      // separately rather than folded in, or the headline would flatter itself.
+      const sameLine = best.base.join(' ') === current.join(' ');
+      if (!sameLine) stats.changed++;
+      if (sameLine && best.holdColour !== FRONT_COLOURS[0]) stats.reheldOnly++;
       if (best.extraMoves > 0) stats.usedExtra++;
       stats.holds[best.holdColour] = (stats.holds[best.holdColour] || 0) + 1;
       stats.ergoGain.push(currentErgo - best.ergo);
@@ -158,8 +178,30 @@ function analyze() {
 
   const totalChanged = rows.reduce((a, r) => a + r.changed, 0);
   const totalExtra = rows.reduce((a, r) => a + r.usedExtra, 0);
-  console.log(`\nOverall: ${pct(totalChanged, totalN)} of scrambles get a different line; ${pct(totalExtra, totalN)} win with an optimal+1 line.`);
+  const totalReheld = rows.reduce((a, r) => a + r.reheldOnly, 0);
+  console.log(`\nOverall: ${pct(totalChanged, totalN)} of scrambles get a genuinely different line; a further ${pct(totalReheld, totalN)} get the solver's own line in a better hold; ${pct(totalExtra, totalN)} spend an extra move.`);
   console.log(`Validated: every recommended line solves the cross, by both our tracker and the solver (${totalN} scrambles).`);
+
+  if (EMIT_CHARTS) {
+    const chartRows = rows.map((r) => ({
+      level: r.level,
+      changedPct: (100 * r.changed) / r.n,
+      extraPct: (100 * r.usedExtra) / r.n,
+      reheldOnlyPct: (100 * r.reheldOnly) / r.n,
+      n: r.n,
+    }));
+    mkdirSync(join(root, EMIT_CHARTS), { recursive: true });
+    for (const mode of ['light', 'dark']) {
+      const path = join(root, EMIT_CHARTS, `cross-ranker-impact-${mode}.svg`);
+      writeFileSync(path, renderImpactChart(chartRows, mode));
+      console.log(`wrote ${path}`);
+    }
+    // The numbers alongside the picture, so a restyle doesn't cost another
+    // 10-minute run and the published figure stays auditable.
+    const dataPath = join(root, EMIT_CHARTS, 'cross-ranker-impact.json');
+    writeFileSync(dataPath, JSON.stringify({ generated: new Date().toISOString().slice(0, 10), perLevel: chartRows }, null, 2) + '\n');
+    console.log(`wrote ${dataPath}`);
+  }
 
   console.log('\n' + '='.repeat(78));
   console.log('WORKED EXAMPLES - check these against a cube');
