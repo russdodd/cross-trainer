@@ -13,6 +13,7 @@ import { Injectable } from '@angular/core';
 import { ScrambleGrade, TrackingBand } from './pair-tracking';
 
 export type Rating = 'too-hard' | 'ok' | 'too-easy';
+export type SolutionMatch = 'same' | 'different';
 
 export interface TrackingFeedbackRecord {
   timestamp: string;
@@ -25,6 +26,11 @@ export interface TrackingFeedbackRecord {
   bandFilter: TrackingBand | 'any';
   /** Whether the solution had been revealed before rating. */
   solutionRevealed: boolean;
+  /**
+   * Did the user's own cross match the suggested (ranker) line? Optional — null
+   * when they didn't answer (e.g. rated without revealing the suggestion).
+   */
+  solutionMatch: SolutionMatch | null;
   /** (level, scrambleIndex) identifies the row in Scrambles.ts. */
   scrambleIndex: number;
   scramble: string;
@@ -39,6 +45,7 @@ const COLUMNS: (keyof TrackingFeedbackRecord)[] = [
   'grade',
   'bandFilter',
   'solutionRevealed',
+  'solutionMatch',
   'scrambleIndex',
   'scramble',
 ];

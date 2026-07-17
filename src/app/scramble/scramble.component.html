@@ -41,9 +41,18 @@
     <div class="dev-tools">
         <h3 class="dev-tools-title">Dev tools — rate tracking difficulty</h3>
         <div class="dev-tools-rating" *ngIf="!submitted">
-            <a href="#" class="rating-option" *ngFor="let r of ratings" [class.rating-selected]="selectedRating === r.value" (click)="selectRating(r.value)">
-        {{ r.label }}
-      </a>
+            <div class="dev-tools-group">
+                <span class="dev-tools-label">Tracking:</span>
+                <a href="#" class="rating-option" *ngFor="let r of ratings" [class.rating-selected]="selectedRating === r.value" (click)="selectRating(r.value)">
+          {{ r.label }}
+        </a>
+            </div>
+            <div class="dev-tools-group" *ngIf="canRateMatch">
+                <span class="dev-tools-label">My cross vs suggested:</span>
+                <a href="#" class="rating-option" *ngFor="let m of solutionMatches" [class.rating-selected]="selectedMatch === m.value" (click)="selectMatch(m.value)">
+          {{ m.label }}
+        </a>
+            </div>
             <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmit" (click)="submitRating()">Submit</a>
         </div>
         <p class="dev-tools-recorded" *ngIf="submitted">Recorded ✓ — get a new scramble to rate again.</p>

@@ -46,6 +46,42 @@ describe('ScrambleComponent rating box', () => {
     expect(feedback.all()[0].rating).toBe('too-hard');
   });
 
+  it('records the same/different answer alongside the rating', () => {
+    component.newScramble();
+    component.toggleSolution();
+    component.selectRating('ok');
+    component.selectMatch('different');
+    component.submitRating();
+
+    expect(feedback.all()[0].solutionMatch).toBe('different');
+  });
+
+  // same/different is optional — a rating submits fine without it.
+  it('records a null match when the question is left unanswered', () => {
+    component.newScramble();
+    component.selectRating('ok');
+    component.submitRating();
+
+    expect(feedback.count()).toBe(1);
+    expect(feedback.all()[0].solutionMatch).toBeNull();
+  });
+
+  it('only offers the same/different question once the solution is revealed', () => {
+    component.newScramble();
+    expect(component.canRateMatch).toBe(false);
+    component.toggleSolution();
+    expect(component.canRateMatch).toBe(true);
+  });
+
+  it('clears the same/different answer on a new scramble', () => {
+    component.newScramble();
+    component.toggleSolution();
+    component.selectMatch('same');
+    component.newScramble();
+
+    expect(component.selectedMatch).toBeNull();
+  });
+
   // The forgot-if-I-clicked case: a second Submit on the same scramble is a
   // duplicate of one judgement, not a second vote.
   it('does not record a second row when submit is clicked again', () => {

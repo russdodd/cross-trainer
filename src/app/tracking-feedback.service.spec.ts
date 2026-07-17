@@ -10,6 +10,7 @@ function aRecord(overrides: Partial<TrackingFeedbackRecord> = {}): TrackingFeedb
     grade: 'hard',
     bandFilter: 'hard',
     solutionRevealed: true,
+    solutionMatch: null,
     scrambleIndex: 42,
     scramble: "R U R' F",
     ...overrides,
@@ -79,12 +80,20 @@ describe('TrackingFeedbackService', () => {
   describe('toCsv', () => {
 
     it('emits a header and one row per record, in column order', () => {
-      service.record(aRecord());
+      service.record(aRecord({ solutionMatch: 'different' }));
       const [header, row, ...rest] = service.toCsv().split('\n');
 
-      expect(header).toBe('timestamp,rating,level,grade,bandFilter,solutionRevealed,scrambleIndex,scramble');
-      expect(row).toBe('2026-07-16T10:00:00.000Z,too-hard,5,hard,hard,true,42,R U R\' F');
+      expect(header).toBe('timestamp,rating,level,grade,bandFilter,solutionRevealed,solutionMatch,scrambleIndex,scramble');
+      expect(row).toBe('2026-07-16T10:00:00.000Z,too-hard,5,hard,hard,true,different,42,R U R\' F');
       expect(rest).toEqual([]);
+    });
+
+    it('leaves the solutionMatch cell empty when it was not answered', () => {
+      service.record(aRecord({ solutionMatch: null }));
+      const row = service.toCsv().split('\n')[1];
+
+      // ...,solutionRevealed,solutionMatch,scrambleIndex,... → the empty cell between true and 42
+      expect(row).toContain(',true,,42,');
     });
 
     it('emits just the header when there is nothing recorded', () => {

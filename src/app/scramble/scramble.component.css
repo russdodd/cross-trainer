@@ -70,8 +70,22 @@
 .dev-tools-rating {
     display: flex;
     justify-content: center;
+    align-items: center;
+    gap: 8px 16px;
+    flex-wrap: wrap;
+}
+
+.dev-tools-group {
+    display: flex;
+    align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    justify-content: center;
+}
+
+.dev-tools-label {
+    font-size: 10pt;
+    opacity: 0.6;
 }
 
 .rating-option,

@@ -10,7 +10,7 @@ import {
   recommendPair,
   TrackingBand,
 } from '../pair-tracking';
-import { Rating, TrackingFeedbackService } from '../tracking-feedback.service';
+import { Rating, SolutionMatch, TrackingFeedbackService } from '../tracking-feedback.service';
 import { crossSolutionFor } from '../cross-solution';
 
 export interface PairReveal {
@@ -54,6 +54,11 @@ export class ScrambleComponent {
         { value: 'too-easy', label: 'Too easy' },
     ];
     public selectedRating: Rating | null = null;
+    public solutionMatches: { value: SolutionMatch, label: string }[] = [
+        { value: 'same', label: 'Same' },
+        { value: 'different', label: 'Different' },
+    ];
+    public selectedMatch: SolutionMatch | null = null;
     public submitted = false;
     public feedbackCount = 0;
     // Latched on reveal rather than read from the button, so hiding the solution
@@ -126,12 +131,26 @@ export class ScrambleComponent {
         return false;
     }
 
+    selectMatch(match: SolutionMatch): boolean {
+        if (!this.submitted) {
+            this.selectedMatch = match;
+        }
+        return false;
+    }
+
+    // Same/different only makes sense once the suggested line has been seen, so the
+    // question is offered only after a reveal. Latched, so hiding it again keeps it.
+    get canRateMatch(): boolean {
+        return this.revealedThisScramble;
+    }
+
     get canSubmit(): boolean {
         return this.scramble !== "" && this.selectedRating !== null && !this.submitted;
     }
 
     // The only writer. An unsubmitted scramble is deliberately not recorded — a
-    // skipped rating is silence, not a verdict of "ok".
+    // skipped rating is silence, not a verdict of "ok". solutionMatch is optional,
+    // so it rides along as null when left unanswered.
     submitRating(): boolean {
         if (!this.canSubmit) {
             return false;
@@ -143,6 +162,7 @@ export class ScrambleComponent {
             grade: gradeScramble(decodePairFeatures(this.scrambleLevel, this.scrambleIndex)),
             bandFilter: this.trackingBand,
             solutionRevealed: this.revealedThisScramble,
+            solutionMatch: this.selectedMatch,
             scrambleIndex: this.scrambleIndex,
             scramble: this.scramble,
         });
@@ -176,6 +196,7 @@ export class ScrambleComponent {
 
     private resetRating() {
         this.selectedRating = null;
+        this.selectedMatch = null;
         this.submitted = false;
         this.revealedThisScramble = false;
     }
