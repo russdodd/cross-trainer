@@ -31,14 +31,20 @@
         <p class="solution-speed" *ngIf="solution">turn speed {{turnSpeed}} (lower is faster)<ng-container *ngIf="extraMove"> · one more than optimal</ng-container></p>
         <div class="pair-reveal" *ngIf="pairReveal.length">
             <h3 class="pair-reveal-title">First pair tracking</h3>
-            <details *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
-                <summary class="pair-summary">
+            <details class="pair-reveal-details">
+                <summary class="pair-summary" *ngIf="recommendedPair as rec">
+                    <span class="pair-name">
+                        <span class="pair-swatch" *ngFor="let c of rec.colors.split('-')" [ngClass]="'swatch-' + c"></span>
+                        {{rec.colors}}
+                    </span>
+                </summary>
+                <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
                     <span class="pair-name">
                         <span class="pair-swatch" *ngFor="let c of p.colors.split('-')" [ngClass]="'swatch-' + c"></span>
                         {{p.colors}}
                     </span>
-                </summary>
-                <span class="pair-evidence"><span class="pair-verdict">{{p.verdict}}</span>{{p.evidence}}</span>
+                    <span class="pair-evidence"><span class="pair-verdict">{{p.verdict}}</span>{{p.evidence}}</span>
+                </p>
             </details>
         </div>
     </div>

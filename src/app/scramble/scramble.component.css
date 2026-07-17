@@ -43,6 +43,10 @@
     list-style-position: outside;
 }
 
+.pair-reveal-details[open] > .pair-row:first-of-type {
+    margin-top: 8px;
+}
+
 .pair-name {
     display: inline-block;
     min-width: 8em;

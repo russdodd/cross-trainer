@@ -37,6 +37,11 @@ export class ScrambleComponent {
     public solutionLevel = 0;
     public message = "";
     public pairReveal: PairReveal[] = [];
+    // The pair a solver would track first; shown as the always-visible header
+    // (pairReveal is sorted recommended-first).
+    public get recommendedPair(): PairReveal | null {
+        return this.pairReveal.length ? this.pairReveal[0] : null;
+    }
     // The recommended line's hold and cost, shown alongside the solution.
     public holdColour = "";
     public turnSpeed = 0;
