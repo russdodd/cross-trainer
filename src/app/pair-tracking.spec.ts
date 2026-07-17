@@ -26,13 +26,13 @@ describe('pair tracking data', () => {
   it('reproduces the analysed grade distribution per level', () => {
     const expected: Record<number, Record<ScrambleGrade, number>> = {
       1: { easy: 984, medium: 0, hard: 0, none: 16 },
-      2: { easy: 961, medium: 24, hard: 0, none: 15 },
-      3: { easy: 855, medium: 127, hard: 3, none: 15 },
-      4: { easy: 624, medium: 329, hard: 37, none: 10 },
-      5: { easy: 365, medium: 526, hard: 98, none: 11 },
-      6: { easy: 172, medium: 592, hard: 225, none: 11 },
-      7: { easy: 65, medium: 482, hard: 440, none: 13 },
-      8: { easy: 15, medium: 305, hard: 669, none: 11 },
+      2: { easy: 962, medium: 25, hard: 0, none: 13 },
+      3: { easy: 842, medium: 139, hard: 3, none: 16 },
+      4: { easy: 603, medium: 350, hard: 34, none: 13 },
+      5: { easy: 330, medium: 541, hard: 115, none: 14 },
+      6: { easy: 138, medium: 582, hard: 272, none: 8 },
+      7: { easy: 60, medium: 415, hard: 511, none: 14 },
+      8: { easy: 14, medium: 169, hard: 802, none: 15 },
     };
     for (let level = 1; level <= 8; level++) {
       const counts: Record<ScrambleGrade, number> = { easy: 0, medium: 0, hard: 0, none: 0 };
@@ -98,7 +98,7 @@ describe('pair tracking model', () => {
 
   it('indexes only scrambles matching the requested band', () => {
     const indices = indicesForBand(5, 'hard');
-    expect(indices.length).toBe(98);
+    expect(indices.length).toBe(115);
     for (const i of indices) {
       expect(gradeScramble(decodePairFeatures(5, i))).toBe('hard');
     }

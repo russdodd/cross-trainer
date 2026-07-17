@@ -9,64 +9,10 @@
     margin: 0 0 4px;
 }
 
-/* Experimental ranking. Styled as a distinct, clearly-marked block so it is never
-   mistaken for the solver's own answer.
-   The surrounding solution box is purple with white text, so this panel must set
-   its own dark colour explicitly - otherwise it inherits white onto cream and is
-   invisible. */
-.human-reveal {
-    max-width: 640px;
-    margin: 18px auto 0;
-    padding: 12px 16px;
-    border: 1px dashed #b0894b;
-    border-radius: 6px;
-    background: #fdf8ef;
-    color: #3d3222;
-    text-align: left;
-}
-
-.human-reveal-title {
-    font-weight: normal;
-    font-size: 14pt;
-    margin: 0 0 8px;
-    color: #6b5732;
-}
-
-.experimental-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    margin-right: 8px;
-    border-radius: 10px;
-    background: #b0894b;
-    color: #fff;
-    font-size: 9pt;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    vertical-align: middle;
-}
-
-.human-reveal-hold {
-    font-size: 12pt;
-    margin: 0 0 6px;
-}
-
-.human-reveal-moves {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 24pt;
-    font-weight: bold;
-    color: #2b2317;
-    word-break: break-word;
-}
-
-.human-reveal-evidence {
+.solution-speed {
     font-size: 10pt;
-    color: #6b5732;
-    margin: 6px 0 0;
-}
-
-.pair-reveal-scope {
-    font-size: 10pt;
-    opacity: 0.7;
+    opacity: 0.6;
+    margin: 0 0 4px;
 }
 
 .pair-reveal {

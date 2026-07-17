@@ -27,17 +27,10 @@
         </label>
             </p>
         </div>
-        <p class="solution-hold" *ngIf="solution">Solver's line — hold <strong>green</strong> in front, white on the bottom</p>
-        <div class="human-reveal" *ngIf="humanReveal">
-            <h3 class="human-reveal-title">
-                <span class="experimental-badge">Experimental</span> Easier line to execute
-            </h3>
-            <p class="human-reveal-hold">Hold <strong>{{humanReveal.holdColour}}</strong> in front, white on the bottom</p>
-            <div class="human-reveal-moves">{{humanReveal.moves}}</div>
-            <p class="human-reveal-evidence">{{humanReveal.evidence}}</p>
-        </div>
+        <p class="solution-hold" *ngIf="solution">Hold <strong>{{holdColour}}</strong> in front, white on the bottom</p>
+        <p class="solution-speed" *ngIf="solution">turn speed {{turnSpeed}} (lower is faster)<ng-container *ngIf="extraMove"> · one more than optimal</ng-container></p>
         <div class="pair-reveal" *ngIf="pairReveal.length">
-            <h3 class="pair-reveal-title">First pair tracking <span class="pair-reveal-scope">— for the solver's line, not the experimental one</span></h3>
+            <h3 class="pair-reveal-title">First pair tracking</h3>
             <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
                 <span class="pair-name">{{p.colors}}</span>
                 <span class="pair-verdict">{{p.verdict}}</span>

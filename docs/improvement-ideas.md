@@ -87,7 +87,9 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **Verification:** the analysis is self-checking — it asserts the cross is genuinely solved after scramble + solution for all 8000 scrambles, which validates the tracker, the z2 frame mapping and the solver call together. Five worked samples were checked on a real cube. In the app, the reveal prints per-pair evidence ("corner moved 2×, ends on top; edge moved 0×, ends on top") so every grade stays checkable during normal practice.
 
-## 5. Human-optimal solution + hold guidance — 🧪 EXPERIMENTAL (July 2026)
+## 5. Human-optimal solution + hold guidance — ✅ GRADUATED (July 2026)
+
+**Graduated to THE solution.** After the user judged the ranker's line reliably better in hand, the experimental side-panel was removed and the ranker's pick became the only solution the app shows; the raw solver line is no longer displayed. The pick is now **precomputed offline** into `CrossSolutionData.ts` (served by a lookup — no solving/ranking in the browser), and `PairTrackingData.ts` was regenerated against it, so the tracking reveal and difficulty bucketing describe the shown line. Retuning `EXTRA_MOVE_MARGIN` now needs a data regen. The analysis below is the design record from when it was experimental.
 
 **Idea (user's):** the displayed solution often isn't finger-optimal. Sometimes a 9-move line beats an 8-move one because it's finger-friendlier or easier to hold in memory (fewer interacting pieces — solving edges in stages). The tool also never says which face to hold in front. Get all optimal and optimal+1 solutions and rank them for "human optimal". Inspired by a [cubedb.net cross tool thread](https://www.reddit.com/r/Cubers/comments/qcz1b6/cubedbnet_efficient_cross_practice_tool_inspired/).
 
@@ -114,7 +116,7 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **User's take (July 2026):** the staged idea is right but "disrupting placed edges can be fine" — hence staging is only ever a light tiebreaker, and the optimal+1 cap means it can never prefer an 11-move line over a 7-move one. Shipped as clearly-marked experimental to judge cube-in-hand.
 
-**Implemented:** `src/app/cross-ranker/{cross-states,cube-tracker,cross-ranker}.js` + vendored `algSpeed.js`, `cross-ranker.spec.ts`, `scripts/analyze-cross-ranking.mjs`, and an "Experimental" panel in `ScrambleComponent`. Pair tracking deliberately still describes the solver's line and is labelled as such.
+**Implemented:** `src/app/cross-ranker/{cross-states,cube-tracker,cross-ranker}.js` + vendored `algSpeed.js`, `cross-ranker.spec.ts`, `scripts/analyze-cross-ranking.mjs`. Originally an "Experimental" panel in `ScrambleComponent` with pair tracking describing the solver's line; see the graduation note at the top of this section for the current shape.
 
 **Verification:** the analysis asserts every recommended line solves the cross by two independent routes — our own tracker, and `cross.solve()` on scramble + solution — across all sampled scrambles and levels.
 

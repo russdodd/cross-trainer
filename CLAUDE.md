@@ -24,25 +24,27 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 
 ## Cross Trainer (primary feature)
 
-**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click) and optionally a first-pair tracking band, gets a scramble from a random level in the range, and can reveal the optimal solution (labelled with the picked level) plus how each F2L pair behaves during it.
+**Purpose:** Practice solving the white cross and transitioning to F2L. User picks a difficulty range (1–8 moves to solve; the "to" dropdown snaps to the "from" value so single-level practice needs one click) and optionally a first-pair tracking band, gets a scramble from a random level in the range, and can reveal the recommended (ergonomic) solution — the line to actually execute plus the face to hold in front — labelled with the picked level, plus how each F2L pair behaves during it.
 
 **Key files:**
 - `src/app/cross/cross.component.html` — `.controls` flex row (from/to level dropdowns 1–8, tracking band dropdown + its collapsible methodology explainer), + `<app-scramble>`
 - `src/app/cross/cross.component.ts` — holds `minLevel`/`maxLevel` range state (To options filtered to ≥ From), `trackingBand`, and `showMethodology`
 - `src/app/scramble/scramble.component.ts` — all the logic
-- `src/app/Scrambles.ts` — 8 arrays × 1000 pre-computed scrambles (character-encoded)
+- `src/app/Scrambles.ts` — 8 arrays × 1000 pre-computed scrambles (character-encoded). **⚠️ Precious — never regenerate or edit; everything else keys off these indices.**
+- `src/app/cross-solution.ts` — reads the shipped recommended solution for a scramble (a lookup)
+- `src/app/CrossSolutionData.ts` — **generated**; per-scramble `[holdColour, turnSpeed, moves]` for the ranker's chosen line
 - `src/app/pair-tracking.ts` — first-pair tracking difficulty model (see below)
-- `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features
-- `scripts/analyze-pair-tracking.mjs` — generates the above; the analysis/validation harness
+- `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features, computed against the recommended line
+- `scripts/analyze-pair-tracking.mjs` — generates **both** data files above; the analysis/validation harness (runs the ranker per scramble)
 - `src/app/tracking-feedback.service.ts` — dev tools rating store (see below)
-- `src/app/cross-ranker/` — **experimental** human-optimal solution ranking (see below)
+- `src/app/cross-ranker/` — human-optimal solution ranking, run **offline only** (see below)
 - `scripts/analyze-cross-ranking.mjs` — its analysis/validation harness; also emits the README charts
 - `scripts/impact-chart.mjs` — the README chart's SVG renderer; `scripts/render-impact-charts.mjs` re-renders it from saved numbers
 - `docs/img/` — **generated**; the README's impact charts (light + dark SVG) and the JSON they were drawn from
 - `src/app/cstimer/cross.js` — cross solver (ported from cstimer)
 - `src/app/cstimer/kernel.js`, `mathlib.js`, `mersenneTwister.js` — solver support libs
 
-**⚠️ Never modify the `src/app/cstimer/*` files.** They are fragile vendored code with no tests, and busting the solver breaks the whole trainer. Call `cross.solve()` read-only; build any cube maths you need as a separate module.
+**⚠️ Never modify the `src/app/cstimer/*` files.** They are fragile vendored code with no tests, and busting the solver breaks the whole trainer. Call `cross.solve()` read-only; build any cube maths you need as a separate module. (The runtime app no longer calls the solver at all — it's used only offline by the generation scripts — but the vendored files stay untouched.)
 
 **Flow:**
 
@@ -51,27 +53,29 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 3. Picks `scrambles[level-1][randomIndex]` — a character-encoded scramble string
 4. Decodes each char using `charCodeAt - 'A'.charCodeAt(0)` as an index into `MoveNamesWCA`
 5. Displays the resulting WCA-notation scramble string
-6. "Get Solution" calls `cross.solve(scrambleStr)` → returns **6 solutions, one per cross face, in order D, U, L, R, F, B** (see `faceStr`, cross.js:210). `sols[1]` is the white/U cross and is what's displayed, alongside the picked level ("Solution (Level 6)"). Its moves are in the **z2-rotated frame** — i.e. as you'd actually execute them after flipping white to the bottom; `moveIdx[1]` (`"FLDBRU"`) is the original→z2 letter mapping.
-7. The pair-tracking reveal is rendered from `PairTrackingData.ts` (a lookup, no extra solving)
+6. "Get Solution" reads `crossSolutionFor(level, index)` from `CrossSolutionData.ts` — a pure lookup: the recommended (ergonomic) line, the face to hold in front, and its turn-speed cost. Shown as "Solution (Level 6)" with the hold and a turn-speed label. **No solving or ranking happens in the browser** — every line was computed offline (see the ranker section below). Moves are WCA notation as executed in the recommended hold.
+7. The pair-tracking reveal is rendered from `PairTrackingData.ts` (a lookup, no extra solving), describing that same recommended line
 
 **Scramble encoding:** Each character A–R maps to a move index. `MoveNamesWCA = ["R","R2","R'","B","B2","B'","L","L2","L'","F","F2","F'","D","D2","D'","U","U2","U'"]`.
 
 ### First-pair tracking difficulty
 
-Grades each scramble by how hard it is to track the first F2L pair through the displayed cross solution. Two axes:
+Grades each scramble by how hard it is to track the first F2L pair through the **recommended (ergonomic) cross solution** — the same line the app shows. (It used to grade the raw solver line; since that line is no longer displayed, both the bucketing and the reveal now describe the line you actually execute.) Two axes:
 
 - **Favourability (filter):** a pair is only worth tracking if its **corner ends in the U layer**. Once the cross is solved a corner can only be on top or stuck in an F2L slot (and an edge only in U or an E-slice slot — the cross occupies every D edge slot), so a corner in D always means an extraction.
 - **Disruptions (dial):** how many solution moves displace either piece, counted even if a later move puts it back. A scramble is graded by its **best qualifying pair**, since that's the one a solver would pick. Bands: easy ≤2, medium 3–4, hard 5+.
 
-Levels 1–2 have no hard cases and every level has ~11–16 scrambles with no qualifying pair, so empty band × level combinations are real and the UI shows a message instead of a scramble. Full distribution and rationale: `docs/improvement-ideas.md` §4.
+Levels 1–2 have no hard cases and every level has ~8–16 scrambles with no qualifying pair, so empty band × level combinations are real and the UI shows a message instead of a scramble. Full distribution and rationale: `docs/improvement-ideas.md` §4.
 
-**Regenerating the data** (only needed if the model or thresholds change):
+**Regenerating the data** (needed if the model/thresholds change **or the ranker is retuned**, since the shipped line now depends on `EXTRA_MOVE_MARGIN`):
 
 ```bash
-node scripts/analyze-pair-tracking.mjs --emit-ts src/app/PairTrackingData.ts
+node scripts/analyze-pair-tracking.mjs \
+  --emit-ts src/app/PairTrackingData.ts \
+  --emit-solution src/app/CrossSolutionData.ts   # ~10 min (runs the ranker per scramble) — background it
 ```
 
-The script is self-validating: it asserts the cross is genuinely solved after applying scramble + solution for all 8000 scrambles (which checks the tracker, the z2 frame mapping and the solver call together), and that the emitted data round-trips. `pair-tracking.spec.ts` asserts the shipped data reproduces the expected distribution — it will fail if the script's encoder and `pair-tracking.ts`'s decoder ever drift apart.
+Emits **both** shipped data files from one pass. It sources each solution from `recommend().best` (the ranker), so a regen keeps the displayed solution and its tracking features in lockstep. `--limit N` runs a fast smoke test on N scrambles/level and refuses to emit (never overwrite the shipped data with a truncated file). The script is self-validating: it asserts the cross is genuinely solved after applying scramble + solution for all 8000 scrambles — which now also independently re-verifies every recommended line — and that the pair data round-trips. `pair-tracking.spec.ts` asserts the shipped data reproduces the expected distribution (update those numbers when you regenerate); the reveal/bucketing will fail loudly if the script's encoder and `pair-tracking.ts`'s decoder drift apart.
 
 ### Dev tools rating box
 
@@ -86,9 +90,9 @@ The easy/medium/hard thresholds above were chosen analytically and have never be
 
 **⚠️ localStorage is origin-scoped, and this is the sharp edge.** `localhost:4200`, a branch preview (`<branch>-cross-trainer.russell-dodd.workers.dev`), prod (`cross-trainer.russell-dodd.workers.dev`) and the planned `russdodd.dev` custom domain each keep a **separate store that never merges**. Collect real data on prod only; treat localhost and preview ratings as throwaway. Pointing `russdodd.dev` at this Worker will look like the history vanished — it hasn't, it's parked on `workers.dev` — so **export the CSV before any domain move**. The CSV is also the only backup against clearing browsing data.
 
-### Human-optimal solutions + hold guidance (experimental)
+### Human-optimal solutions + hold guidance (now THE solution)
 
-`src/app/cross-ranker/` picks a line that's nicer to *execute* than the one the solver returns, and says how to hold the cube for it. Shown in a dashed "Experimental" panel under the solver's line. **Clearly marked as experimental on purpose** — it's an unproven model, and the solver's line stays the primary answer.
+`src/app/cross-ranker/` picks a line that's nicer to *execute* than the raw solver line, and says how to hold the cube for it. **This is the solution the app shows** — it graduated from an experimental side-panel in July 2026, and the solver's line is no longer displayed at all. The ranker runs **offline only**: `scripts/analyze-pair-tracking.mjs` bakes its pick for every scramble into `CrossSolutionData.ts`, and the runtime just looks it up.
 
 Why it exists: `cross.solve()` returns whichever optimal line its IDA* search reaches first, and that search tries faces in the fixed order F, R, U, B, L, D — so the answer skews **F/B-heavy**, the least finger-friendly faces. It also never says which face to hold in front.
 
@@ -99,7 +103,7 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 | `cube-tracker.js` | Oriented cross-edge tracker (position **and** orientation, unlike the pair-tracking one). Used to prove a recommended line really solves the cross |
 | `cross-ranker.js` | Scores candidates × 4 holds; `ergonomics()` is the only caller of algSpeed |
 
-**Scoring:** `score = ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over candidates × 4 holds. Both knobs are exported constants in `cross-ranker.js`, tunable without regenerating anything.
+**Scoring:** `score = ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over candidates × 4 holds. Both knobs are exported constants in `cross-ranker.js`. **Since the pick is now baked into `CrossSolutionData.ts`, retuning a knob requires a data regen** (see the pair-tracking regen command) — they are no longer live at runtime.
 
 - **A third term, "staging", was tried and removed (July 2026).** The idea (the user's) was to reward building the cross in stages rather than having every piece interact at once. Two metrics were tried: "breaks an already-placed edge" was inert (~0 for nearly every optimal cross solution), and its replacement — area under the "edges done so far" curve — changed **~1% of picks** even after its own bug was fixed, because ergonomic differences between candidates dwarfed its ~0.25 spread. It only ever separated genuine ties. Removed as complexity for negligible benefit; the full story and numbers are in `docs/improvement-ideas.md` §5. **Ergonomics and the hold are what make the recommendations good.**
 - `EXTRA_MOVE_MARGIN` exists because algSpeed already prices the extra move's turning time, so without it a +1 line wins on noise (8.0 vs 7.9). It charges the +1 line for memory load algSpeed doesn't model. At 1.5, +1 usage drops from ~35% → ~6%.
@@ -108,7 +112,7 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 
 **Frames and holds:** everything works in `sols[1]`'s z2 frame (white bottom, green front → U=yellow, D=white, F=green, B=blue, L=red, R=orange). A hold is `k` y-rotations; `relabelForHold` maps `R→F, F→L, L→B, B→R` per rotation (holding the old R face in front means a move called R is now called F). `FRONT_COLOURS = [green, orange, blue, red]` for k=0..3.
 
-**Cost:** distance table ~40ms once; ranking is <20ms at typical levels but **~0.6s at level 8** (up to ~39k candidates × 4 holds). Runs on solution reveal, not scramble draw. If it ever feels janky, prefilter with a cheap weight table before algSpeed.
+**Cost:** none at runtime — it's precomputed. The offline pass is where the ~0.6s/scramble at level 8 (up to ~39k candidates × 4 holds) lands, ~10 min for all 8000. (An earlier iteration ran the ranker live on solution reveal, then warmed it on scramble draw to hide the lag; precomputing into a file superseded both — the browser never solves or ranks now.)
 
 **Regenerating the README charts:**
 
@@ -118,7 +122,7 @@ node scripts/analyze-cross-ranking.mjs --all --emit-charts docs/img   # ~10 min 
 
 `--emit-charts` refuses to run without `--all` (it fails fast): the figures are published, and a sample would publish sampling noise as fact. Emitting from this run is deliberate — the same pass asserts every recommended line actually solves the cross, so a chart can't drift from the code. It also writes the numbers as JSON, so a **restyle** (wording, colours) re-renders in a second with `node scripts/render-impact-charts.mjs` instead of costing another full run.
 
-**Not wired into pair tracking.** `PairTrackingData.ts` describes the *solver's* line and was deliberately not regenerated, so the UI labels which panel describes which line. Revisit only if the experiment graduates.
+**Wired into pair tracking (since it graduated).** `PairTrackingData.ts` is now generated against the ranker's line, so the tracking reveal and the difficulty bucketing describe the same line the app shows — no more "which panel is which line" caveat. The two data files come from one `analyze-pair-tracking.mjs` pass and stay in lockstep.
 
 **Measured: extra moves don't pay.** Gain from allowing N extra moves, vs the best optimal-length line across all 4 holds (levels 3–6, 80 scrambles):
 
@@ -186,7 +190,7 @@ The original deploy was: SSH to a DO droplet → `git pull` → `docker-compose 
 
 ## Known quirks
 
-- `cross.solve()` returns one solution per cross face (D, U, L, R, F, B); `sols[1]` — the white cross — is the only one used. `sols[0]` is the D-face (yellow) cross, not metadata.
+- `cross.solve()` returns one solution per cross face (D, U, L, R, F, B); `sols[1]` — the white cross — is the only one used (offline, by the generation scripts). `sols[0]` is the D-face (yellow) cross, not metadata.
 - `algSpeed()` returns an **error string**, not a number, for input it can't parse — always go through `ergonomics()` in `cross-ranker.js`, which throws rather than letting a NaN into a score. Its `ignoreauf` flag must stay `false`: with it on it silently strips a leading/trailing U, which is right for an alg with an AUF but wrong for a cross solution where every move is real.
 - Level 8 is only **102 distinct cross states** in the whole space (all 1000 level-8 scrambles map onto them), which is why its candidate lists are so large.
 - `npx ng test --watch=false --browsers=ChromeHeadless` is **green** and should stay that way — any failure is a real one. (Until July 2026 six scaffolded specs failed and had to be triaged by hand every run; they were fixed by giving each TestBed what its template actually needs — `FormsModule` for `ngModel`/`ngForm`, `provideRouter([])` for `routerLink`, `NO_ERRORS_SCHEMA` to stub heavy children like the D3 cube. `AppComponent`'s spec had been asserting the CLI starter's "app is running!" banner.)

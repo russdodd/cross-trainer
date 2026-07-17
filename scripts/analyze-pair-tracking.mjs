@@ -1,26 +1,36 @@
-// Phase A analysis for first-pair tracking difficulty.
+// First-F2L-pair tracking difficulty + the shipped cross solution.
 //
 // For every pre-computed scramble, tracks each of the 4 F2L pairs (white corner +
-// matching E-slice edge) through the displayed optimal cross solution and records:
+// matching E-slice edge) through the recommended (ergonomic) cross solution and
+// records:
 //   - how many solution moves displace the corner / the edge ("disruptions")
 //   - which layer each piece ends in (U = top while solving, E = middle, D = bottom)
 //
-// The solver (src/app/cstimer/*) is used strictly read-only via cross.solve().
+// The solution is the cross-ranker's pick (recommend().best), NOT the raw solver
+// line. The ranker is what the app now serves as THE solution, so tracking is
+// graded against the line the user actually executes. The solver (cstimer/*) is
+// used only transitively, read-only, inside the ranker.
+//
 // All cube math here is an independent piece tracker, self-checked before use and
 // cross-validated by asserting the solution actually solves the cross for all
-// 8000 scrambles.
+// 8000 scrambles — which, because the solution is now the ranker's, independently
+// re-verifies every recommended line too.
 //
-// Frames: scrambles are applied white-top/green-front (WCA). cross.solve()'s
-// sols[1] is the white cross with moves in the z2-rotated frame (white flipped to
-// the bottom, as you'd actually solve). This script works entirely in that solving
-// frame: the scramble is mapped through z2 and the solution applies as-is.
+// Frames: scrambles are applied white-top/green-front (WCA). recommend().best.base
+// is the chosen line in the z2-rotated solving frame (white flipped to the bottom,
+// green front — same frame the old solver line used). This script tracks pieces in
+// that frame; best.moves is the same line relabelled for its hold, which is what
+// gets shipped for display.
 //
-// Usage: node scripts/analyze-pair-tracking.mjs [--features-out <path.json>]
+// Usage: node scripts/analyze-pair-tracking.mjs \
+//          [--emit-ts src/app/PairTrackingData.ts] \
+//          [--emit-solution src/app/CrossSolutionData.ts] \
+//          [--features-out <path.json>] [--limit <N per level, for smoke tests>]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { cross } from '../src/app/cstimer/cross.js';
+import { recommend } from '../src/app/cross-ranker/cross-ranker.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -155,8 +165,8 @@ function selfCheck() {
 // Per-scramble analysis
 // ---------------------------------------------------------------------------
 function analyzeScramble(scrambleStr) {
-  const sols = cross.solve(scrambleStr);
-  const solution = sols[1].map(parseSolMove); // white cross, solving (z2) frame
+  const { optimal, best } = recommend(scrambleStr);
+  const solution = best.base.map((t) => parseSolMove(t.trim())); // ranker's line, solving (z2) frame
 
   // positions after the scramble, in the solving frame
   const state = new Map(); // piece id -> current position
@@ -197,7 +207,17 @@ function analyzeScramble(scrambleStr) {
     edgeFinal: state.get(p.edge),
   }));
 
-  return { solutionLength: solution.length, solution: sols[1].map((s) => s.trim()).join(' '), pairs };
+  return {
+    optimal,
+    solutionLength: solution.length,
+    // Green-frame line, for cube-in-hand sample checks (pieces tracked in this frame).
+    solutionBase: best.base.map((s) => s.trim()).join(' '),
+    // What the app ships: the same line relabelled for its hold, plus the hold and cost.
+    displayMoves: best.moves.map((s) => s.trim()).join(' '),
+    holdColour: best.holdColour,
+    ergo: Math.round(best.ergo * 10) / 10,
+    pairs,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -287,28 +307,42 @@ function decodePairs(enc) {
 // ---------------------------------------------------------------------------
 selfCheck();
 
-const featuresOutIdx = process.argv.indexOf('--features-out');
-const featuresOut = featuresOutIdx > -1 ? process.argv[featuresOutIdx + 1] : null;
-const emitTsIdx = process.argv.indexOf('--emit-ts');
-const emitTs = emitTsIdx > -1 ? process.argv[emitTsIdx + 1] : null;
+const argVal = (flag) => {
+  const i = process.argv.indexOf(flag);
+  return i > -1 ? process.argv[i + 1] : null;
+};
+const featuresOut = argVal('--features-out');
+const emitTs = argVal('--emit-ts');
+const emitSolution = argVal('--emit-solution');
+const limit = Math.min(argVal('--limit') ? Number(argVal('--limit')) : 1000, 1000);
+const full = limit === 1000;
+if (!full && (emitTs || emitSolution)) {
+  // A partial run must never overwrite the shipped data with a truncated file.
+  throw new Error('--limit is a smoke-test flag and cannot be combined with --emit-ts / --emit-solution');
+}
 
 const results = []; // [level-1][index] -> analysis
-console.log('analyzing 8 levels x 1000 scrambles...');
+console.log(`analyzing 8 levels x ${limit} scrambles${full ? '' : ' (smoke test — will not emit)'}...`);
 const t0 = Date.now();
 for (let level = 1; level <= 8; level++) {
   const bucket = [];
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < limit; i++) {
     const scrambleStr = decodeScramble(scrambles[level - 1][i]);
     const a = analyzeScramble(scrambleStr);
-    if (a.solutionLength !== level) {
-      throw new Error(`bucket mismatch: level ${level} index ${i} has optimal cross length ${a.solutionLength}`);
+    // The scramble's bucket IS its optimal cross length; the ergo line is optimal
+    // or optimal+1 (the ranker's EXTRA_MOVE_MARGIN admits one extra move).
+    if (a.optimal !== level) {
+      throw new Error(`bucket mismatch: level ${level} index ${i} has optimal cross length ${a.optimal}`);
+    }
+    if (a.solutionLength !== level && a.solutionLength !== level + 1) {
+      throw new Error(`ergo line length ${a.solutionLength} out of range at level ${level} index ${i}`);
     }
     bucket.push(a);
   }
   results.push(bucket);
   console.log(`  level ${level} done (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 }
-console.log('cross solved-state verified for all 8000 scrambles');
+console.log(`cross solved-state verified for all ${8 * limit} recommended lines`);
 
 if (featuresOut) {
   writeFileSync(featuresOut, JSON.stringify(results));
@@ -351,6 +385,35 @@ if (emitTs) {
       `export const pairTrackingData: string[][] = [${body}\n];\n`
   );
   console.log(`data module written to ${emitTs}`);
+}
+
+// --- emit the shipped cross-solution module -----------------------------------
+if (emitSolution) {
+  const HOLDS = ['green', 'orange', 'blue', 'red'];
+  const entries = results.map((bucket) =>
+    bucket.map((a) => {
+      if (!HOLDS.includes(a.holdColour)) throw new Error(`unexpected hold colour ${a.holdColour}`);
+      if (!(a.ergo > 0)) throw new Error(`bad ergo ${a.ergo}`);
+      if (!a.displayMoves) throw new Error('empty display moves');
+      return [a.holdColour, a.ergo, a.displayMoves];
+    })
+  );
+  const body = entries
+    .map((bucket, i) => `\n// level ${i + 1}\n[\n${bucket.map((e) => JSON.stringify(e)).join(',\n')}\n]`)
+    .join(',');
+  writeFileSync(
+    emitSolution,
+    `// GENERATED FILE - do not edit by hand.\n` +
+      `// Regenerate with: node scripts/analyze-pair-tracking.mjs --emit-solution src/app/CrossSolutionData.ts\n` +
+      `//\n` +
+      `// The recommended (ergonomic) cross solution for each scramble in Scrambles.ts.\n` +
+      `// One entry per scramble: [holdColour, turnSpeed, moves]. holdColour is the face\n` +
+      `// to hold in front (white on the bottom); turnSpeed is the ranker's ergonomic\n` +
+      `// cost (lower is faster); moves are WCA notation as executed in that hold.\n` +
+      `// Read with crossSolutionFor() in cross-solution.ts.\n` +
+      `export const crossSolutionData: [string, number, string][][] = [${body}\n];\n`
+  );
+  console.log(`solution module written to ${emitSolution}`);
 }
 
 // --- report: the shipped model -------------------------------------------------
@@ -400,7 +463,8 @@ for (const [level, idx] of samplePicks) {
   const scrambleStr = decodeScramble(scrambles[level - 1][idx]);
   const a = results[level - 1][idx];
   console.log(`\nLevel ${level}, scramble #${idx + 1}: ${scrambleStr}`);
-  console.log(`  cross solution (after z2, white down / green front): ${a.solution}`);
+  console.log(`  cross solution (after z2, white down / green front): ${a.solutionBase}`);
+  console.log(`  as shipped: ${a.displayMoves}  (hold ${a.holdColour} in front, turn speed ${a.ergo})`);
   for (const p of a.pairs) {
     const verdict = qualifies(p)
       ? `${bandOf(totalDisruptions(p))} (${totalDisruptions(p)} disruptions)`

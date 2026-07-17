@@ -124,7 +124,7 @@ describe('ScrambleComponent rating box', () => {
   });
 });
 
-describe('ScrambleComponent experimental line', () => {
+describe('ScrambleComponent solution reveal', () => {
 
   let component: ScrambleComponent;
 
@@ -137,31 +137,40 @@ describe('ScrambleComponent experimental line', () => {
     localStorage.removeItem(STORAGE_KEY);
   });
 
-  // Level 8 always has an alternative line worth showing.
-  it('reveals the solution and the experimental line', () => {
+  const revealLevel8 = () => {
     component.minLevel = 8;
     component.maxLevel = 8;
     component.newScramble();
     component.toggleSolution();
+  };
+
+  it('reveals the recommended line, its hold and turn speed', () => {
+    revealLevel8();
 
     expect(component.solution).not.toBe('');
-    expect(component.humanReveal).not.toBeNull();
+    expect(component.holdColour).not.toBe('');
+    expect(component.turnSpeed).toBeGreaterThan(0);
     expect(component.pairReveal.length).toBe(4);
   });
 
-  // Hiding then re-showing must reuse the cached solve, not recompute it.
-  it('reuses the cached solve across hide/show', () => {
-    component.minLevel = 8;
-    component.maxLevel = 8;
-    component.newScramble();
-    component.toggleSolution();
-    const line = component.humanReveal!.moves;
-    const hold = component.humanReveal!.holdColour;
+  it('reads the same solution from the data on every reveal', () => {
+    revealLevel8();
+    const moves = component.solution;
+    const hold = component.holdColour;
 
     component.toggleSolution(); // hide
     component.toggleSolution(); // show again
 
-    expect(component.humanReveal!.moves).toBe(line);
-    expect(component.humanReveal!.holdColour).toBe(hold);
+    expect(component.solution).toBe(moves);
+    expect(component.holdColour).toBe(hold);
+  });
+
+  it('clears the solution and its hold when hidden', () => {
+    revealLevel8();
+    component.toggleSolution(); // hide
+
+    expect(component.solution).toBe('');
+    expect(component.holdColour).toBe('');
+    expect(component.turnSpeed).toBe(0);
   });
 });

@@ -1,9 +1,10 @@
 // First-F2L-pair tracking difficulty.
 //
 // Every scramble in Scrambles.ts has pre-computed features in PairTrackingData.ts
-// describing how each of the 4 F2L pairs behaves during the optimal cross solution:
-// how many solution moves displace each piece, and which layer it ends in. Those
-// features were produced (and cube-verified) by scripts/analyze-pair-tracking.mjs.
+// describing how each of the 4 F2L pairs behaves during the recommended (ergonomic)
+// cross solution — the same line the app ships (see cross-solution.ts): how many
+// solution moves displace each piece, and which layer it ends in. Those features
+// were produced (and cube-verified) by scripts/analyze-pair-tracking.mjs.
 //
 // The model has two axes:
 //   favourability - a pair is only worth tracking if its corner ends in the top
