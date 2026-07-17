@@ -26,10 +26,15 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('cube-trainer');
   });
 
-  it('should render title', () => {
+  // The CLI's original assertion looked for the starter template's
+  // "cube-trainer app is running!" banner, which was replaced by the router
+  // outlet and footer years ago. Assert what the shell actually renders.
+  it('renders the router outlet and the footer', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement;
-    expect(compiled.querySelector('.content span').textContent).toContain('cube-trainer app is running!');
+    const compiled: HTMLElement = fixture.nativeElement;
+
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
+    expect(compiled.querySelector('footer')?.textContent).toContain('built by russ dodd');
   });
 });

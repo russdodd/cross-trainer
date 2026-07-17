@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" width="720" height="450" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-label="Impact of the experimental cross ranker by difficulty level">
+  <rect width="720" height="450" fill="#1a1a19"/>
+  <text x="38" y="22" fill="#ffffff" font-size="14" font-weight="600">Scrambles given a genuinely different solution</text>
+  <text x="38" y="37" fill="#c3c2b7" font-size="11">a different sequence of turns from the solver’s — not its line re-held (that is counted separately)</text>
+  <line x1="38" y1="178.0" x2="704" y2="178.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="181.5" fill="#c3c2b7" font-size="10" text-anchor="end">0%</text>
+  <line x1="38" y1="148.5" x2="704" y2="148.5" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="152.0" fill="#c3c2b7" font-size="10" text-anchor="end">25%</text>
+  <line x1="38" y1="119.0" x2="704" y2="119.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="122.5" fill="#c3c2b7" font-size="10" text-anchor="end">50%</text>
+  <line x1="38" y1="89.5" x2="704" y2="89.5" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="93.0" fill="#c3c2b7" font-size="10" text-anchor="end">75%</text>
+  <line x1="38" y1="60.0" x2="704" y2="60.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="63.5" fill="#c3c2b7" font-size="10" text-anchor="end">100%</text>
+  <text x="79.6" y="172.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">0%</text>
+  <text x="79.6" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">1</text>
+  <path d="M150.9,178.0 L150.9,173.6 Q150.9,169.6 154.9,169.6 L170.9,169.6 Q174.9,169.6 174.9,173.6 L174.9,178.0 Z" fill="#3987e5"/>
+  <text x="162.9" y="163.6" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">7%</text>
+  <text x="162.9" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">2</text>
+  <path d="M234.1,178.0 L234.1,161.6 Q234.1,157.6 238.1,157.6 L254.1,157.6 Q258.1,157.6 258.1,161.6 L258.1,178.0 Z" fill="#3987e5"/>
+  <text x="246.1" y="151.6" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">17%</text>
+  <text x="246.1" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">3</text>
+  <path d="M317.4,178.0 L317.4,136.1 Q317.4,132.1 321.4,132.1 L337.4,132.1 Q341.4,132.1 341.4,136.1 L341.4,178.0 Z" fill="#3987e5"/>
+  <text x="329.4" y="126.1" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">39%</text>
+  <text x="329.4" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">4</text>
+  <path d="M400.6,178.0 L400.6,115.0 Q400.6,111.0 404.6,111.0 L420.6,111.0 Q424.6,111.0 424.6,115.0 L424.6,178.0 Z" fill="#3987e5"/>
+  <text x="412.6" y="105.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">57%</text>
+  <text x="412.6" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">5</text>
+  <path d="M483.9,178.0 L483.9,88.7 Q483.9,84.7 487.9,84.7 L503.9,84.7 Q507.9,84.7 507.9,88.7 L507.9,178.0 Z" fill="#3987e5"/>
+  <text x="495.9" y="78.7" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">79%</text>
+  <text x="495.9" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">6</text>
+  <path d="M567.1,178.0 L567.1,69.0 Q567.1,65.0 571.1,65.0 L587.1,65.0 Q591.1,65.0 591.1,69.0 L591.1,178.0 Z" fill="#3987e5"/>
+  <text x="579.1" y="59.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">96%</text>
+  <text x="579.1" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">7</text>
+  <path d="M650.4,178.0 L650.4,65.3 Q650.4,61.3 654.4,61.3 L670.4,61.3 Q674.4,61.3 674.4,65.3 L674.4,178.0 Z" fill="#3987e5"/>
+  <text x="662.4" y="55.3" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">99%</text>
+  <text x="662.4" y="193.0" fill="#c3c2b7" font-size="11" text-anchor="middle">8</text>
+  <line x1="38" y1="178.0" x2="704" y2="178.0" stroke="#33322f" stroke-width="1"/>
+  <text x="360.0" y="207.0" fill="#c3c2b7" font-size="10" text-anchor="middle">cross difficulty (moves to solve)</text>
+  <text x="38" y="256" fill="#ffffff" font-size="14" font-weight="600">Scrambles where the recommendation spends an extra move</text>
+  <text x="38" y="271" fill="#c3c2b7" font-size="11">one turn longer than the shortest possible, taken only when it beats every shortest line by a clear margin</text>
+  <line x1="38" y1="412.0" x2="704" y2="412.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="415.5" fill="#c3c2b7" font-size="10" text-anchor="end">0%</text>
+  <line x1="38" y1="382.5" x2="704" y2="382.5" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="386.0" fill="#c3c2b7" font-size="10" text-anchor="end">25%</text>
+  <line x1="38" y1="353.0" x2="704" y2="353.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="356.5" fill="#c3c2b7" font-size="10" text-anchor="end">50%</text>
+  <line x1="38" y1="323.5" x2="704" y2="323.5" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="327.0" fill="#c3c2b7" font-size="10" text-anchor="end">75%</text>
+  <line x1="38" y1="294.0" x2="704" y2="294.0" stroke="#33322f" stroke-width="1"/>
+  <text x="31" y="297.5" fill="#c3c2b7" font-size="10" text-anchor="end">100%</text>
+  <text x="79.6" y="406.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">0%</text>
+  <text x="79.6" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">1</text>
+  <text x="162.9" y="406.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">0%</text>
+  <text x="162.9" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">2</text>
+  <path d="M234.1,412.0 L234.1,412.0 Q234.1,409.5 236.6,409.5 L255.6,409.5 Q258.1,409.5 258.1,412.0 L258.1,412.0 Z" fill="#008300"/>
+  <text x="246.1" y="403.5" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">2%</text>
+  <text x="246.1" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">3</text>
+  <path d="M317.4,412.0 L317.4,410.5 Q317.4,406.5 321.4,406.5 L337.4,406.5 Q341.4,406.5 341.4,410.5 L341.4,412.0 Z" fill="#008300"/>
+  <text x="329.4" y="400.5" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">5%</text>
+  <text x="329.4" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">4</text>
+  <path d="M400.6,412.0 L400.6,405.6 Q400.6,401.6 404.6,401.6 L420.6,401.6 Q424.6,401.6 424.6,405.6 L424.6,412.0 Z" fill="#008300"/>
+  <text x="412.6" y="395.6" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">9%</text>
+  <text x="412.6" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">5</text>
+  <path d="M483.9,412.0 L483.9,399.8 Q483.9,395.8 487.9,395.8 L503.9,395.8 Q507.9,395.8 507.9,399.8 L507.9,412.0 Z" fill="#008300"/>
+  <text x="495.9" y="389.8" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">14%</text>
+  <text x="495.9" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">6</text>
+  <path d="M567.1,412.0 L567.1,411.2 Q567.1,407.2 571.1,407.2 L587.1,407.2 Q591.1,407.2 591.1,411.2 L591.1,412.0 Z" fill="#008300"/>
+  <text x="579.1" y="401.2" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">4%</text>
+  <text x="579.1" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">7</text>
+  <text x="662.4" y="406.0" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">0%</text>
+  <text x="662.4" y="427.0" fill="#c3c2b7" font-size="11" text-anchor="middle">8</text>
+  <line x1="38" y1="412.0" x2="704" y2="412.0" stroke="#33322f" stroke-width="1"/>
+  <text x="360.0" y="441.0" fill="#c3c2b7" font-size="10" text-anchor="middle">cross difficulty (moves to solve)</text>
+</svg>

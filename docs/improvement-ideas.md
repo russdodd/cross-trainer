@@ -87,6 +87,106 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **Verification:** the analysis is self-checking — it asserts the cross is genuinely solved after scramble + solution for all 8000 scrambles, which validates the tracker, the z2 frame mapping and the solver call together. Five worked samples were checked on a real cube. In the app, the reveal prints per-pair evidence ("corner moved 2×, ends on top; edge moved 0×, ends on top") so every grade stays checkable during normal practice.
 
+## 5. Human-optimal solution + hold guidance — 🧪 EXPERIMENTAL (July 2026)
+
+**Idea (user's):** the displayed solution often isn't finger-optimal. Sometimes a 9-move line beats an 8-move one because it's finger-friendlier or easier to hold in memory (fewer interacting pieces — solving edges in stages). The tool also never says which face to hold in front. Get all optimal and optimal+1 solutions and rank them for "human optimal". Inspired by a [cubedb.net cross tool thread](https://www.reddit.com/r/Cubers/comments/qcz1b6/cubedbnet_efficient_cross_practice_tool_inspired/).
+
+**The bug underneath it:** `cross.solve()` returns whichever optimal line its IDA* search finds first, and that search tries faces in fixed order F, R, U, B, L, D. So the trainer has been systematically showing **F/B-heavy solutions** — the worst faces for your hands. This wasn't a subjective preference; it was a real bias worth fixing.
+
+**Analysis:**
+
+- **Enumeration is cheap and exact.** The cross state space is only 190,080 states, so an exact BFS distance table (~40ms) allows enumerating *every* optimal and optimal+1 line — no changes to the fragile solver, which keeps its tables private. The table's histogram is asserted against the counts `cross.js` itself hardcodes.
+- **Ergonomics is a solved problem, by someone else.** [Trangium's algSpeed](https://github.com/trangium/trangium.github.io) (MIT) simulates grips, fingertricks and regrips. Measured face costs: R 0.80 < U 1.00 < D 1.40 < L 1.50 < F 2.30 < **B 3.50** — exactly the axis the solver's search order was blind to. 2.8µs/call, so scoring tens of thousands of candidates is affordable.
+- **Measured effect** (480 scrambles, every one validated):
+
+  | Level | different line | avg ergo gain | F/B moves | staged |
+  |-------|---------------|---------------|-----------|--------|
+  | 4     | 45%           | 1.78          | 1.40 → 1.23 | 0.50 → 0.50 |
+  | 6     | 87%           | 3.71          | 2.43 → 2.10 | 0.36 → 0.37 |
+  | 7     | 98%           | 4.55          | 2.88 → 2.30 | 0.30 → 0.37 |
+  | 8     | 98%           | 5.31          | 3.28 → 2.87 | 0.25 → 0.35 |
+
+- **The hold is the free win.** Often the moves don't change at all — only the hold does. `L D L` becomes `R D R` by holding blue in front (ergo 5.6 → 3.5). Same physical solution, zero cost. Recommended holds come out evenly spread (green 29%, red 25%, orange 24%, blue 22%), which is what you'd expect if the advice is real.
+- **The first cognitive-load metric was junk.** "Breaks an already-placed edge" is ~0 for nearly every optimal cross solution, so it ranked nothing. Replaced by `staged`: the area under the "edges done so far" curve, which discriminates on 100% of scrambles.
+- **The second one was subtly wrong too — see below.** It counted exact edge positions, which misreads an ordered-but-unaligned cross.
+- **+1 lines need a margin.** algSpeed already prices the extra move's turning time, so without a margin a +1 line wins on noise (8.0 vs 7.9 — an extra move for nothing). `EXTRA_MOVE_MARGIN = 1.5` charges it for the memory load algSpeed doesn't model; +1 usage drops 35% → 6%, keeping only clear wins like `F2 B2 R` (9.0) → `R2 L' F L'` (4.6).
+- **Cost:** ~0.6s at level 8 (up to 39k candidates × 4 holds), <20ms at typical levels. Runs on reveal.
+
+**User's take (July 2026):** the staged idea is right but "disrupting placed edges can be fine" — hence staging is only ever a light tiebreaker, and the optimal+1 cap means it can never prefer an 11-move line over a 7-move one. Shipped as clearly-marked experimental to judge cube-in-hand.
+
+**Implemented:** `src/app/cross-ranker/{cross-states,cube-tracker,cross-ranker}.js` + vendored `algSpeed.js`, `cross-ranker.spec.ts`, `scripts/analyze-cross-ranking.mjs`, and an "Experimental" panel in `ScrambleComponent`. Pair tracking deliberately still describes the solver's line and is labelled as such.
+
+**Verification:** the analysis asserts every recommended line solves the cross by two independent routes — our own tracker, and `cross.solve()` on scramble + solution — across all sampled scrambles and levels.
+
+### Extra moves: measured, and mostly against the idea (July 2026)
+
+The founding hunch was "sometimes a 9-move line beats an 8-move one". The user then asked the sharper question — how does +1 compare to +0 across the board, and would +2/+3 help? Gain = how much better the best line gets if you allow N extra moves, measured against the best **optimal-length** line across all 4 holds, so it isolates what the extra move itself buys (levels 3–6, 80 scrambles):
+
+| extra | avg gain | best case | % beats +0 at all | % beats by >1.5 |
+|-------|----------|-----------|-------------------|-----------------|
+| +1    | 0.02     | 2.50      | 39%               | 9%              |
+| +2    | −0.39    | 2.00      | 28%               | 4%              |
+| +3    | −0.86    | 1.60      | 23%               | 1%              |
+
+- **+1 is marginal**: 0.02 ergo on average — less than a single R move (0.80). It's a rare-but-real win: 9% of scrambles clear the 1.5 margin, worth up to 2.50.
+- **+2/+3 are strictly worse**, and not just on average — their *best cases shrink* (2.50 → 2.00 → 1.60) and they win less often. **Don't build them.** Each extra move costs turning time that algSpeed already charges, and smoother fingertricks rarely repay it.
+- **The user's XCross suspicion was correct.** XCross adds moves to also solve an F2L pair — the extra moves buy a *pair*. Adding moves to a plain cross buys only smoothness, which doesn't cover the cost. Cross walkthroughs that "add a bunch of moves" are almost certainly doing XCross.
+- **Is the 1.5 margin huge?** No — algSpeed is unbounded and time-like (a 7-move cross scores ~9–16) and one move costs 0.80 (R) to 3.50 (B), so 1.5 ≈ one L move. The real story is that +1 barely does anything regardless.
+
+**Verdict:** keep +1 with the margin (it's the 9% that prompted the whole idea), never build +2/+3.
+
+### The `staged` metric was measuring the wrong thing — fixed (July 2026)
+
+Found by the user before any votes were collected, which mattered: the harness exists to calibrate `STAGING_WEIGHT`, and it would have calibrated against a broken signal.
+
+**The bug:** `solvedCount` tested exact absolute position. But a cross edge on the bottom, white down, in correct *relative* order is effectively done — the solver stops thinking about it and aligns the whole cross with one D at the end. Counting exact positions marked those pieces unsolved until that final turn, so a solution that was three-quarters done from move one read as "everything lands at once".
+
+**Fix:** `staged`/`solvedAfter` use `solvedCountAligned` — the most edges simultaneously home under a single best D offset. Self-limiting: two bottom edges in the wrong relative order credit 1, not 2. `crossSolved` stays strict, since the validation harness needs "solved" to mean aligned.
+
+**Evidence (960 scrambles, solver's line), independently reproduced:**
+
+| | exact | alignment-tolerant |
+|---|---|---|
+| mean staged | 0.530 | 0.693 |
+| systematic understatement | | 0.163 |
+| solutions where the two disagree | | 56.5% |
+| solutions ending in a purely-aligning D | | 18.4% |
+
+Worked case (Scrambles.ts 4[14], solver's line `F2 D' B' D'`): progress was `0,0,0,4` = 0.25 ("all at once"); it is really `3,3,4,4` = 0.88. Three edges are ordered from move one and the trailing `D'` is pure alignment. The old docstring's own showcase for "all at once" (8[0], cited at 0.13) was the same misread — it's actually `0,0,0,1,2,3,4,4` = 0.44.
+
+**Consequences:**
+
+- Candidate spread shrank 0.38 → **0.25**, so `STAGING_WEIGHT` went 1.0 → **1.5** to keep the intended ~0.38 max score shift.
+- **Only ~7% of recommendations changed** (0% at level 3, ~12% at level 7). The metric was now right on 57% of solutions it had misread, but the staging term is dominated by ergonomics, so few picks move.
+- **The old metric flattered the feature.** It showed recommendations *improving* staged (level 8: 0.25 → 0.34). Corrected, they slightly *reduce* it (0.44 → 0.40): the ranker trades a little staging for a lot of ergonomics (+5.03 at level 8). A defensible trade, but the honest picture.
+- **Staging turned out close to inert**: at 1.5 it changed ~1% of picks (2.5 → ~4%), and only ever separated genuine ties. Which led directly to:
+
+### Staging removed — ✅ DONE (July 2026)
+
+Fixing the metric is what made it measurable, and the measurement killed it. Even correct, `staged` changed ~1% of the lines shown, because ergonomic differences between candidates (spanning several algSpeed units) dwarf staged's ~0.25 spread. Where it did decide, the ergo and staged deltas were both ~0.00 — genuine ties.
+
+**User's verdict:** *"I think we remove it. it seems to be adding complexity for the benefit that is almost negligible."*
+
+Removed: `STAGING_WEIGHT`, `solvedCountAligned`, `trackSolution`, the `staged`/`breaks`/`solvedAfter` fields, the `staged` CSV column, and the "edges done as you go" evidence line. `cube-tracker.js` remains — the validation harness uses it (with strict `crossSolved`) to prove a recommended line really solves the cross.
+
+Scoring is now `ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over candidates × 4 holds.
+
+**The lesson, twice over:** the cognitive-load idea was intuitive and both attempts to operationalise it failed — the first inert, the second real but dominated. **Ergonomics and the hold are the whole win.** If staging is revisited, it needs a different experiment: A/B two lines matched on ergonomics but far apart on staging, so the idea is judged on its own rather than as a tiebreaker that never breaks anything.
+
+### Line verdicts — ✅ DONE (July 2026)
+
+`EXTRA_MOVE_MARGIN` (1.5) was calibrated from score distributions, not hands. The dev tools now carry a **better / about the same / worse** box on the experimental line, stored via `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` slices by `holdsOnly`, `extraMoves`, and by face.
+
+**It shipped as a blind A/B first, and the blinding lasted one session.** User's verdict: *"It's super obvious which blind is computer vs ergonomic."* And they're right — blinding only works when the options carry no tell, and these do: the solver's line is F/B-heavy, ours is R/U-heavy. Randomising the sides fooled nobody, cost the reader the context of knowing which was which, and required withholding the whole reveal (solution, experimental panel, pair tracking) until a vote landed — a lot of machinery for a disguise anyone could see through. Removed; the storage key went to `v2` rather than migrating, since the v1 rows answered a different question.
+
+**What that costs, honestly:** an open preference report carries some pull toward the tool's own pick. There's no fixing that here — the tell is intrinsic to what the feature does. So read a high "better" rate with suspicion; the **"worse"** rows and the by-face slices are the parts that can actually surprise us. If a genuinely blind test is ever wanted, it would have to compare two lines *without* an obvious signature — e.g. two candidates matched on face mix but differing on the thing being tested.
+
+**What a verdict actually measures.** Since staging is gone, the recommendation is "best algSpeed across candidates and holds" — so a verdict is a referendum on **algSpeed's ergonomics model plus the hold choice**, nothing else.
+
+**A "worse" verdict is not automatically the voter's gap.** Treating it that way would make the experiment unfalsifiable. algSpeed is one hobbyist's model of one grip style, and — the untested part — it was built to score OLL/PLL algs from a settled home grip, not cross lines executed cold out of inspection, full of D moves, with no AUF. The face slices exist to separate the two explanations: "worse" spiking on lines containing B or L suggests an undrilled fingertrick; flat across faces suggests the model doesn't fit these hands. For a personal tool, "nicer for you" is the right target — if the hands disagree with algSpeed, follow the hands.
+
+**Open questions / next:** collect verdicts and settle `EXTRA_MOVE_MARGIN` (the only knob left) and whether algSpeed transfers to cross at all; F2L-pair preservation as a ranking term is still deferred.
+
 ## Smaller / future ideas
 
 - **Keyboard-first flow:** spacebar = new scramble, `S` = toggle solution.

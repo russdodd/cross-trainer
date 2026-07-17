@@ -27,13 +27,55 @@
         </label>
             </p>
         </div>
+        <p class="solution-hold" *ngIf="solution">Solver's line — hold <strong>green</strong> in front, white on the bottom</p>
+        <div class="human-reveal" *ngIf="humanReveal">
+            <h3 class="human-reveal-title">
+                <span class="experimental-badge">Experimental</span> Easier line to execute
+            </h3>
+            <p class="human-reveal-hold">Hold <strong>{{humanReveal.holdColour}}</strong> in front, white on the bottom</p>
+            <div class="human-reveal-moves">{{humanReveal.moves}}</div>
+            <p class="human-reveal-evidence">{{humanReveal.evidence}}</p>
+        </div>
         <div class="pair-reveal" *ngIf="pairReveal.length">
-            <h3 class="pair-reveal-title">First pair tracking</h3>
+            <h3 class="pair-reveal-title">First pair tracking <span class="pair-reveal-scope">— for the solver's line, not the experimental one</span></h3>
             <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
                 <span class="pair-name">{{p.colors}}</span>
                 <span class="pair-verdict">{{p.verdict}}</span>
                 <span class="pair-evidence">{{p.evidence}}</span>
             </p>
         </div>
+    </div>
+    <div class="dev-tools">
+        <h3 class="dev-tools-title">Dev tools — rate tracking difficulty</h3>
+        <div class="dev-tools-rating" *ngIf="!submitted">
+            <a href="#" class="rating-option" *ngFor="let r of ratings" [class.rating-selected]="selectedRating === r.value" (click)="selectRating(r.value)">
+        {{ r.label }}
+      </a>
+            <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmit" (click)="submitRating()">Submit</a>
+        </div>
+        <p class="dev-tools-recorded" *ngIf="submitted">Recorded ✓ — get a new scramble to rate again.</p>
+        <p class="dev-tools-footer">
+            <span class="dev-tools-count">{{ feedbackCount }} rating{{ feedbackCount === 1 ? '' : 's' }} recorded</span>
+            <a href="#" (click)="downloadCsv()">Download CSV</a>
+            <a href="#" class="dev-tools-clear" (click)="clearFeedback()">Clear</a>
+        </p>
+    </div>
+    <div class="dev-tools">
+        <h3 class="dev-tools-title">Dev tools — is the experimental line better?</h3>
+        <div class="dev-tools-rating" *ngIf="judgement && !lineVoted">
+            <a href="#" class="rating-option" *ngFor="let v of lineVerdicts" [class.rating-selected]="lineVerdict === v.value" (click)="selectLineVerdict(v.value)">
+        {{ v.label }}
+      </a>
+            <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmitLine" (click)="submitLineVote()">Submit</a>
+        </div>
+        <p class="dev-tools-recorded" *ngIf="lineVoted">Recorded ✓ — get a new scramble to rate again.</p>
+        <p class="dev-tools-hint" *ngIf="!judgement && !lineVoted">
+            {{ solution ? 'Nothing to judge here — the experimental line is the solver’s own, in the same hold.' : 'Reveal a solution to rate its experimental line.' }}
+        </p>
+        <p class="dev-tools-footer">
+            <span class="dev-tools-count">{{ lineFeedbackCount }} verdict{{ lineFeedbackCount === 1 ? '' : 's' }} recorded</span>
+            <a href="#" (click)="downloadLineCsv()">Download CSV</a>
+            <a href="#" class="dev-tools-clear" (click)="clearLineFeedback()">Clear</a>
+        </p>
     </div>
 </ng-container>
