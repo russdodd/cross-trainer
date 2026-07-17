@@ -30,6 +30,18 @@ export interface HumanReveal {
 }
 
 /**
+ * Everything the reveal needs for one scramble: the solver's answer and the
+ * ranker's. Deliberately does not keep the ranker's full `ranked` list — that is
+ * up to ~39k candidates × 4 holds at level 8, and only the winner is ever shown.
+ */
+interface SolveResult {
+  scramble: string;
+  solverLine: string[];
+  solution: string;
+  best: any;
+}
+
+/**
  * What a verdict is judging: the experimental line against the solver's.
  *
  * This was a blind A/B until July 2026. Blinding only works if the two options
@@ -69,6 +81,9 @@ export class ScrambleComponent {
     public humanReveal: HumanReveal | null = null;
     private scrambleLevel = 0;
     private scrambleIndex = 0;
+    // The current scramble's answer, produced when it is drawn. Single entry, not a
+    // map: it answers "the scramble on screen", and a redraw supersedes it.
+    private solved: SolveResult | null = null;
     private GetSolution:string = "Get Solution";
     private HideSolution:string = "Hide Solution";
 
@@ -132,6 +147,7 @@ export class ScrambleComponent {
         this.scramble = TextScrambleWithSpaces;
         this.message = "";
         this.clearSolution();
+        this.schedulePrecompute(TextScrambleWithSpaces);
         return false;
     }
 
@@ -146,13 +162,10 @@ export class ScrambleComponent {
         this.SolButtonText = this.HideSolution;
         this.revealedThisScramble = true;
 
-        var sols = cross.solve(this.scramble);
-        const solverLine = sols[1].map((m: string) => m.trim());
-        this.solution = sols[1].join('  ');
+        const { solverLine, solution, best } = this.solveFor(this.scramble);
+        this.solution = solution;
         this.solutionLevel = this.scrambleLevel;
         this.pairReveal = this.buildPairReveal();
-
-        const best = recommend(this.scramble).best;
         this.humanReveal = this.buildHumanReveal(solverLine, best);
         this.judgement = this.buildJudgement(solverLine, best);
         return false;
@@ -260,6 +273,39 @@ export class ScrambleComponent {
         this.revealedThisScramble = false;
     }
 
+    // Solve and rank once per scramble. Idempotent, so the reveal can call it
+    // safely if it beats the warm-up below — it just pays the cost inline.
+    private solveFor(scramble: string): SolveResult {
+        if (this.solved?.scramble !== scramble) {
+            const sols = cross.solve(scramble);
+            const solverLine = sols[1].map((m: string) => m.trim());
+            this.solved = {
+                scramble,
+                solverLine,
+                solution: sols[1].join('  '),
+                best: recommend(scramble).best,
+            };
+        }
+        return this.solved;
+    }
+
+    // Ranking is ~0.6s at level 8, so it runs off the Get Scramble paint rather
+    // than the Get Solution click — it lands in the pause where the scramble is
+    // being read, and the answer is ready by the time it's asked for.
+    //
+    // rAF then timeout so the scramble is actually on screen before the main
+    // thread goes busy; a bare setTimeout(0) can win the race against the paint.
+    private schedulePrecompute(scramble: string) {
+        requestAnimationFrame(() => setTimeout(() => {
+            if (this.scramble === scramble) {
+                this.solveFor(scramble);
+            }
+        }, 0));
+    }
+
+    // Note this deliberately leaves `solved` alone: hiding the solution and showing
+    // it again is the same scramble, so it must not pay for the ranking twice. The
+    // cache is keyed on the scramble, so the next draw supersedes it.
     private clearSolution() {
         this.SolButtonText = this.GetSolution;
         this.solution = "";
@@ -299,9 +345,9 @@ export class ScrambleComponent {
     }
 
     // Experimental. The solver returns whichever optimal line its search reaches
-    // first, which skews F/B-heavy and never says how to hold the cube. This ranks
-    // every optimal and optimal+1 line across the 4 holds. Worst case (level 8) is
-    // ~0.6s, so it runs on reveal rather than when the scramble is drawn.
+    // first, which skews F/B-heavy and never says how to hold the cube. This
+    // renders the ranking of every optimal and optimal+1 line across the 4 holds
+    // (see solveFor / schedulePrecompute for where that work happens).
     //
     // Deliberately NOT wired into the pair tracking above, which still describes
     // the solver's line.
