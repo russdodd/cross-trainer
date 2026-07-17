@@ -87,6 +87,38 @@ Backlog of feature ideas for cross-trainer, with analysis. Newest at the bottom 
 
 **Verification:** the analysis is self-checking — it asserts the cross is genuinely solved after scramble + solution for all 8000 scrambles, which validates the tracker, the z2 frame mapping and the solver call together. Five worked samples were checked on a real cube. In the app, the reveal prints per-pair evidence ("corner moved 2×, ends on top; edge moved 0×, ends on top") so every grade stays checkable during normal practice.
 
+## 5. Human-optimal solution + hold guidance — 🧪 EXPERIMENTAL (July 2026)
+
+**Idea (user's):** the displayed solution often isn't finger-optimal. Sometimes a 9-move line beats an 8-move one because it's finger-friendlier or easier to hold in memory (fewer interacting pieces — solving edges in stages). The tool also never says which face to hold in front. Get all optimal and optimal+1 solutions and rank them for "human optimal". Inspired by a [cubedb.net cross tool thread](https://www.reddit.com/r/Cubers/comments/qcz1b6/cubedbnet_efficient_cross_practice_tool_inspired/).
+
+**The bug underneath it:** `cross.solve()` returns whichever optimal line its IDA* search finds first, and that search tries faces in fixed order F, R, U, B, L, D. So the trainer has been systematically showing **F/B-heavy solutions** — the worst faces for your hands. This wasn't a subjective preference; it was a real bias worth fixing.
+
+**Analysis:**
+
+- **Enumeration is cheap and exact.** The cross state space is only 190,080 states, so an exact BFS distance table (~40ms) allows enumerating *every* optimal and optimal+1 line — no changes to the fragile solver, which keeps its tables private. The table's histogram is asserted against the counts `cross.js` itself hardcodes.
+- **Ergonomics is a solved problem, by someone else.** [Trangium's algSpeed](https://github.com/trangium/trangium.github.io) (MIT) simulates grips, fingertricks and regrips. Measured face costs: R 0.80 < U 1.00 < D 1.40 < L 1.50 < F 2.30 < **B 3.50** — exactly the axis the solver's search order was blind to. 2.8µs/call, so scoring tens of thousands of candidates is affordable.
+- **Measured effect** (480 scrambles, every one validated):
+
+  | Level | different line | avg ergo gain | F/B moves | staged |
+  |-------|---------------|---------------|-----------|--------|
+  | 4     | 45%           | 1.78          | 1.40 → 1.23 | 0.50 → 0.50 |
+  | 6     | 87%           | 3.71          | 2.43 → 2.10 | 0.36 → 0.37 |
+  | 7     | 98%           | 4.55          | 2.88 → 2.30 | 0.30 → 0.37 |
+  | 8     | 98%           | 5.31          | 3.28 → 2.87 | 0.25 → 0.35 |
+
+- **The hold is the free win.** Often the moves don't change at all — only the hold does. `L D L` becomes `R D R` by holding blue in front (ergo 5.6 → 3.5). Same physical solution, zero cost. Recommended holds come out evenly spread (green 29%, red 25%, orange 24%, blue 22%), which is what you'd expect if the advice is real.
+- **The first cognitive-load metric was junk.** "Breaks an already-placed edge" is ~0 for nearly every optimal cross solution, so it ranked nothing. Replaced by `staged`: the area under the "edges solved so far" curve, which discriminates on 100% of scrambles. `F' L B R' F U R2 U` (progress 0,1,2,2,3,3,4,4) vs `D' U' B' L' R' F R2 D'` (0,0,0,0,0,0,0,4) — the second is exactly the "boils the ocean" case.
+- **+1 lines need a margin.** algSpeed already prices the extra move's turning time, so without a margin a +1 line wins on noise (8.0 vs 7.9 — an extra move for nothing). `EXTRA_MOVE_MARGIN = 1.5` charges it for the memory load algSpeed doesn't model; +1 usage drops 35% → 6%, keeping only clear wins like `F2 B2 R` (9.0) → `R2 L' F L'` (4.6).
+- **Cost:** ~0.6s at level 8 (up to 39k candidates × 4 holds), <20ms at typical levels. Runs on reveal.
+
+**User's take (July 2026):** the staged idea is right but "disrupting placed edges can be fine" — hence staging is only ever a light tiebreaker, and the optimal+1 cap means it can never prefer an 11-move line over a 7-move one. Shipped as clearly-marked experimental to judge cube-in-hand.
+
+**Implemented:** `src/app/cross-ranker/{cross-states,cube-tracker,cross-ranker}.js` + vendored `algSpeed.js`, `cross-ranker.spec.ts`, `scripts/analyze-cross-ranking.mjs`, and an "Experimental" panel in `ScrambleComponent`. Pair tracking deliberately still describes the solver's line and is labelled as such.
+
+**Verification:** the analysis asserts every recommended line solves the cross by two independent routes — our own tracker, and `cross.solve()` on scramble + solution — across all sampled scrambles and levels.
+
+**Open questions / next:** tune `STAGING_WEIGHT` (1.0) and `EXTRA_MOVE_MARGIN` (1.5) against real solves; consider extending the dev-tools rating harness to rate the *recommended line* (kept separate for now so it doesn't muddy the tracking-difficulty data); F2L-pair preservation as a ranking term is still deferred (the tracker makes it cheap now).
+
 ## Smaller / future ideas
 
 - **Keyboard-first flow:** spacebar = new scramble, `S` = toggle solution.

@@ -34,6 +34,9 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 - `src/app/pair-tracking.ts` — first-pair tracking difficulty model (see below)
 - `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features
 - `scripts/analyze-pair-tracking.mjs` — generates the above; the analysis/validation harness
+- `src/app/tracking-feedback.service.ts` — dev tools rating store (see below)
+- `src/app/cross-ranker/` — **experimental** human-optimal solution ranking (see below)
+- `scripts/analyze-cross-ranking.mjs` — its analysis/validation harness
 - `src/app/cstimer/cross.js` — cross solver (ported from cstimer)
 - `src/app/cstimer/kernel.js`, `mathlib.js`, `mersenneTwister.js` — solver support libs
 
@@ -67,6 +70,47 @@ node scripts/analyze-pair-tracking.mjs --emit-ts src/app/PairTrackingData.ts
 ```
 
 The script is self-validating: it asserts the cross is genuinely solved after applying scramble + solution for all 8000 scrambles (which checks the tracker, the z2 frame mapping and the solver call together), and that the emitted data round-trips. `pair-tracking.spec.ts` asserts the shipped data reproduces the expected distribution — it will fail if the script's encoder and `pair-tracking.ts`'s decoder ever drift apart.
+
+### Dev tools rating box
+
+The easy/medium/hard thresholds above were chosen analytically and have never been validated in hand. The dev tools box at the bottom of the cross trainer collects the evidence to settle that: rate each scramble **too hard / ok / too easy**, then export the CSV and see whether the ratings line up with the grades the model assigned.
+
+- `TrackingFeedbackService` (`providedIn: 'root'`) wraps `localStorage` key `cross-trainer.tracking-feedback.v1` — a JSON array of `TrackingFeedbackRecord` (`timestamp`, `rating`, `level`, `grade`, `bandFilter`, `solutionRevealed`, `scrambleIndex`, `scramble`). `toCsv()` emits those as columns in that order.
+- **Submit is the only writer.** Getting a new scramble without submitting records nothing — a skipped rating is silence, not a verdict of "ok". `ScrambleComponent.resetRating()` clears the selection on every `newScramble()`.
+- **One vote per draw.** `canSubmit` gates on `!submitted`, so re-clicking Submit (or forgetting you already voted) can't double-count. The gate is on the **Get Scramble click, not the scramble's identity** — drawing the same case again tomorrow is a genuine second data point and does record. Note the guard lives in the model, checked synchronously in `submitRating()`; the template's `*ngIf` hiding the buttons is cosmetic, and a DOM-only guard would lose the race to a fast double-click.
+- `solutionRevealed` is a **latch** set in `toggleSolution()`, not a read of the current button state — hiding the solution again doesn't un-see it.
+- Reads are defensive (`try`/`catch` → `[]`): a corrupt or hand-edited key must never break the trainer.
+- **No backend, and no network surface** — "service" here is Angular DI, not an API. `wrangler.toml` stays assets-only.
+
+**⚠️ localStorage is origin-scoped, and this is the sharp edge.** `localhost:4200`, a branch preview (`<branch>-cross-trainer.russell-dodd.workers.dev`), prod (`cross-trainer.russell-dodd.workers.dev`) and the planned `russdodd.dev` custom domain each keep a **separate store that never merges**. Collect real data on prod only; treat localhost and preview ratings as throwaway. Pointing `russdodd.dev` at this Worker will look like the history vanished — it hasn't, it's parked on `workers.dev` — so **export the CSV before any domain move**. The CSV is also the only backup against clearing browsing data.
+
+### Human-optimal solutions + hold guidance (experimental)
+
+`src/app/cross-ranker/` picks a line that's nicer to *execute* than the one the solver returns, and says how to hold the cube for it. Shown in a dashed "Experimental" panel under the solver's line. **Clearly marked as experimental on purpose** — it's an unproven model, and the solver's line stays the primary answer.
+
+Why it exists: `cross.solve()` returns whichever optimal line its IDA* search reaches first, and that search tries faces in the fixed order F, R, U, B, L, D — so the answer skews **F/B-heavy**, the least finger-friendly faces. It also never says which face to hold in front.
+
+| File | Role |
+|---|---|
+| `cross-states.js` | Exact BFS distance table over all 190,080 cross states + enumeration of every optimal / optimal+1 line |
+| `algSpeed.js` | **Vendored** from [Trangium's MovecountCoefficient](https://github.com/trangium/trangium.github.io) (MIT, © 2021 trangium). Simulates grips/fingertricks; lower = faster. Body verbatim; only a header + `export` added |
+| `cube-tracker.js` | Oriented cross-edge tracker (position **and** orientation, unlike the pair-tracking one) + the `staged` metric |
+| `cross-ranker.js` | Scores candidates × 4 holds; `ergonomics()` is the only caller of algSpeed |
+
+**Scoring:** `score = ergonomics + EXTRA_MOVE_MARGIN × extraMoves − STAGING_WEIGHT × staged`. All three knobs are exported constants in `cross-ranker.js`, tunable without regenerating anything.
+
+- `staged` (0–1) is the area under the "cross edges solved so far" curve: 1 = built in stages, 0 = everything lands on the last move. It replaced a "breaks a placed edge" metric that was **inert** (~0 for nearly every optimal cross solution).
+- `EXTRA_MOVE_MARGIN` exists because algSpeed already prices the extra move's turning time, so without it a +1 line wins on noise (8.0 vs 7.9). It charges the +1 line for memory load algSpeed doesn't model. At 1.5, +1 usage drops from ~35% → ~6%.
+
+**Why it duplicates cross.js's state maths:** `cross.js` keeps `fullmv`/`pmul`/`fmul`/`cmv` private and exposes only `solve()`. Enumerating *all* solutions needs the state space directly, and the solver must not be touched — so `cross-states.js` rebuilds the tables from `mathlib`'s public exports. It is not guesswork: its BFS histogram is asserted against the state counts `cross.js` hardcodes in `getEasyCross`, and it throws if they disagree.
+
+**Frames and holds:** everything works in `sols[1]`'s z2 frame (white bottom, green front → U=yellow, D=white, F=green, B=blue, L=red, R=orange). A hold is `k` y-rotations; `relabelForHold` maps `R→F, F→L, L→B, B→R` per rotation (holding the old R face in front means a move called R is now called F). `FRONT_COLOURS = [green, orange, blue, red]` for k=0..3.
+
+**Cost:** distance table ~40ms once; ranking is <20ms at typical levels but **~0.6s at level 8** (up to ~39k candidates × 4 holds). Runs on solution reveal, not scramble draw. If it ever feels janky, prefilter with a cheap weight table before algSpeed.
+
+**Not wired into pair tracking.** `PairTrackingData.ts` describes the *solver's* line and was deliberately not regenerated, so the UI labels which panel describes which line. Revisit only if the experiment graduates.
+
+Measured effect (see `docs/improvement-ideas.md` §5): ~52% of scrambles get a different line; ergo gain averages ~5 at levels 7–8; F/B moves drop 3.28 → 2.87 at level 8. Often the moves don't change at all and only the hold does (`L D L` → `R D R`), which is a free win.
 
 **Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`. These are vendored JS files compiled with `allowJs: true` in tsconfig — they are ES module format and do not have type declarations.
 
@@ -119,6 +163,8 @@ The original deploy was: SSH to a DO droplet → `git pull` → `docker-compose 
 ## Known quirks
 
 - `cross.solve()` returns one solution per cross face (D, U, L, R, F, B); `sols[1]` — the white cross — is the only one used. `sols[0]` is the D-face (yellow) cross, not metadata.
-- Existing component specs (`CrossComponent`, `AppComponent`, the four `Oll*` ones) fail on `main` due to incomplete TestBed configs (missing `FormsModule` / child declarations). Pre-existing, unrelated to any feature work — 6 failures, 7 passing was the baseline before pair tracking added 8 passing specs.
+- `algSpeed()` returns an **error string**, not a number, for input it can't parse — always go through `ergonomics()` in `cross-ranker.js`, which throws rather than letting a NaN into a score. Its `ignoreauf` flag must stay `false`: with it on it silently strips a leading/trailing U, which is right for an alg with an AUF but wrong for a cross solution where every move is real.
+- Level 8 is only **102 distinct cross states** in the whole space (all 1000 level-8 scrambles map onto them), which is why its candidate lists are so large.
+- Existing component specs (`CrossComponent`, `AppComponent`, the four `Oll*` ones) fail on `main` due to incomplete TestBed configs (missing `FormsModule` / child declarations). Pre-existing, unrelated to any feature work. The 6 failures are the standing baseline; passing count has grown as specs were added (7 → 15 with pair tracking → **25** with the tracking-feedback service). Judge a change by whether the failure count is still 6.
 - All components use `standalone: false` (NgModule-based architecture) — this is still fully supported in Angular 20 and was chosen to avoid a full standalone migration during the Angular 10→20 upgrade. `angular.json` schematics set `standalone: false` as the default for any newly generated components.
 - `tsconfig.json` has `strictTemplates: false` — a deliberate trade-off made during the upgrade to avoid fixing all template binding types at once. Can be enabled as a follow-up.
