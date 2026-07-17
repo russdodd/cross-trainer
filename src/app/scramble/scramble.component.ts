@@ -12,7 +12,7 @@ import {
   TrackingBand,
 } from '../pair-tracking';
 import { Rating, TrackingFeedbackService } from '../tracking-feedback.service';
-import { LineChoice, LineFeedbackService } from '../line-feedback.service';
+import { LineVerdict, LineFeedbackService } from '../line-feedback.service';
 import { ergonomics, recommend, FRONT_COLOURS } from '../cross-ranker/cross-ranker.js';
 
 export interface PairReveal {
@@ -29,21 +29,24 @@ export interface HumanReveal {
   evidence: string;
 }
 
-interface ComparisonLine {
-  moves: string;
-  holdColour: string;
-  ergo: number;
-}
-
-/** A blind A/B between the ranker's pick and the solver's line. */
-interface LineComparison {
-  a: ComparisonLine;
-  b: ComparisonLine;
-  /** Which side is ours. Randomised, and not revealed until the vote is in. */
-  recommendedSide: 'A' | 'B';
-  /** Same moves either side, only the hold differs. */
+/**
+ * What a verdict is judging: the experimental line against the solver's.
+ *
+ * This was a blind A/B until July 2026. Blinding only works if the two options
+ * have no tell, and these do — the solver's line is F/B-heavy and the
+ * recommendation is R/U-heavy, so which is which is obvious on sight. The
+ * randomisation bought nothing and cost the reader context, so it went.
+ */
+interface LineJudgement {
+  /** Null when the recommendation IS the solver's line, in its hold — nothing to judge. */
   holdsOnly: boolean;
   extraMoves: number;
+  ergoRecommended: number;
+  ergoSolver: number;
+  movesRecommended: string;
+  holdRecommended: string;
+  movesSolver: string;
+  holdSolver: string;
 }
 
 @Component({
@@ -83,17 +86,14 @@ export class ScrambleComponent {
     // again doesn't pretend it was never seen.
     private revealedThisScramble = false;
 
-    // Blind line comparison. Off by default: it withholds the solution until you
-    // vote, which is the wrong trade during ordinary practice.
-    public blindMode = false;
-    public comparison: LineComparison | null = null;
-    public lineChoice: LineChoice | null = null;
+    public judgement: LineJudgement | null = null;
+    public lineVerdict: LineVerdict | null = null;
     public lineVoted = false;
     public lineFeedbackCount = 0;
-    public lineChoices: { value: LineChoice, label: string }[] = [
-        { value: 'A', label: 'A' },
-        { value: 'B', label: 'B' },
-        { value: 'equal', label: 'About equal' },
+    public lineVerdicts: { value: LineVerdict, label: string }[] = [
+        { value: 'better', label: 'Better' },
+        { value: 'same', label: 'About the same' },
+        { value: 'worse', label: 'Worse' },
     ];
 
     constructor(
@@ -102,19 +102,6 @@ export class ScrambleComponent {
     ) {
         this.feedbackCount = this.feedback.count();
         this.lineFeedbackCount = this.lineFeedback.count();
-    }
-
-    /**
-     * In blind mode nothing that identifies the lines may show until the vote is
-     * in — that includes the pair tracking, which describes the solver's line and
-     * would give the game away.
-     */
-    get revealVisible(): boolean {
-        return !!this.solution && (!this.blindMode || this.lineVoted || !this.comparison);
-    }
-
-    get voteVisible(): boolean {
-        return this.blindMode && !!this.comparison && !this.lineVoted;
     }
 
     newScramble() {
@@ -167,54 +154,32 @@ export class ScrambleComponent {
 
         const best = recommend(this.scramble).best;
         this.humanReveal = this.buildHumanReveal(solverLine, best);
-        this.comparison = this.blindMode ? this.buildComparison(solverLine, best) : null;
+        this.judgement = this.buildJudgement(solverLine, best);
         return false;
     }
 
-    toggleBlindMode(): boolean {
-        this.blindMode = !this.blindMode;
-        // The current reveal was drawn for the other mode, so start it over rather
-        // than half-hiding a solution that has already been seen.
-        this.clearSolution();
-        return false;
-    }
-
-    selectLine(choice: LineChoice): boolean {
+    selectLineVerdict(verdict: LineVerdict): boolean {
         if (!this.lineVoted) {
-            this.lineChoice = choice;
+            this.lineVerdict = verdict;
         }
         return false;
     }
 
     get canSubmitLine(): boolean {
-        return !!this.comparison && this.lineChoice !== null && !this.lineVoted;
+        return !!this.judgement && this.lineVerdict !== null && !this.lineVoted;
     }
 
     submitLineVote(): boolean {
         if (!this.canSubmitLine) {
             return false;
         }
-        const c = this.comparison!;
-        const recommended = c.recommendedSide === 'A' ? c.a : c.b;
-        const solver = c.recommendedSide === 'A' ? c.b : c.a;
-
         this.lineFeedback.record({
             timestamp: new Date().toISOString(),
             level: this.scrambleLevel,
             scrambleIndex: this.scrambleIndex,
             scramble: this.scramble,
-            choice: this.lineChoice!,
-            recommendedSide: c.recommendedSide,
-            // "equal" is a real answer, not a failure to agree — keep it distinct.
-            agreed: this.lineChoice === 'equal' ? null : this.lineChoice === c.recommendedSide,
-            holdsOnly: c.holdsOnly,
-            extraMoves: c.extraMoves,
-            ergoRecommended: recommended.ergo,
-            ergoSolver: solver.ergo,
-            movesRecommended: recommended.moves,
-            holdRecommended: recommended.holdColour,
-            movesSolver: solver.moves,
-            holdSolver: solver.holdColour,
+            verdict: this.lineVerdict!,
+            ...this.judgement!,
         });
         this.lineVoted = true;
         this.lineFeedbackCount = this.lineFeedback.count();
@@ -301,8 +266,8 @@ export class ScrambleComponent {
         this.solutionLevel = 0;
         this.pairReveal = [];
         this.humanReveal = null;
-        this.comparison = null;
-        this.lineChoice = null;
+        this.judgement = null;
+        this.lineVerdict = null;
         this.lineVoted = false;
     }
 
@@ -372,41 +337,29 @@ export class ScrambleComponent {
     }
 
     /**
-     * The blind A/B. Sides are randomised so the vote judges the lines, not the
-     * labels — which is the whole point, since the ranker's weights were set from
-     * score distributions rather than from anyone's hands.
+     * The context a verdict is recorded against.
      *
-     * Returns null when there is genuinely nothing to judge: the ranker picked the
-     * solver's line, in the solver's hold.
+     * Null when there is genuinely nothing to judge: the ranker picked the solver's
+     * own line, in the solver's own hold, so a verdict would be comparing a line
+     * with itself.
      */
-    private buildComparison(solverLine: string[], best: any): LineComparison | null {
+    private buildJudgement(solverLine: string[], best: any): LineJudgement | null {
         if (!best) {
             return null;
         }
         const holdsOnly = best.base.join(' ') === solverLine.join(' ');
-        const sameHold = best.holdColour === FRONT_COLOURS[0];
-        if (holdsOnly && sameHold) {
+        if (holdsOnly && best.holdColour === FRONT_COLOURS[0]) {
             return null;
         }
-
-        const ours: ComparisonLine = {
-            moves: best.moves.join('  '),
-            holdColour: best.holdColour,
-            ergo: best.ergo,
-        };
-        const theirs: ComparisonLine = {
-            moves: solverLine.join('  '),
-            holdColour: FRONT_COLOURS[0],
-            ergo: ergonomics(solverLine),
-        };
-        const recommendedSide: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B';
-
         return {
-            a: recommendedSide === 'A' ? ours : theirs,
-            b: recommendedSide === 'A' ? theirs : ours,
-            recommendedSide,
             holdsOnly,
             extraMoves: best.extraMoves,
+            ergoRecommended: best.ergo,
+            ergoSolver: ergonomics(solverLine),
+            movesRecommended: best.moves.join('  '),
+            holdRecommended: best.holdColour,
+            movesSolver: solverLine.join('  '),
+            holdSolver: FRONT_COLOURS[0],
         };
     }
 

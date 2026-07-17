@@ -24,7 +24,7 @@ Both panels share one 0–100% scale, so they're honestly comparable.
 
 **The third result isn't in the charts, and it's the best one.** On another 35% of scrambles the recommendation *is* the solver's line — just held with a different face in front. Same turns, better angle: `L D L` becomes `R D R` by holding blue. It costs nothing and it's the mirror image of the top chart — 57–68% of easy crosses vs ~1% of 8-move ones. Where the line can't be improved, the hold usually can.
 
-The panel is marked **experimental** in the UI: it's an unproven model of *someone else's* hands, so the solver's line stays the primary answer. Dev tools include a blind A/B vote for testing it against real fingers. Full analysis and caveats: [`docs/improvement-ideas.md`](docs/improvement-ideas.md) §5.
+The panel is marked **experimental** in the UI: it's an unproven model of *someone else's* hands, so the solver's line stays the primary answer. Dev tools carry a better/same/worse box for testing it against real fingers. Full analysis and caveats: [`docs/improvement-ideas.md`](docs/improvement-ideas.md) §5.
 
 <details>
 <summary>Exact numbers</summary>
@@ -74,7 +74,7 @@ The cube analysis lives outside the app, in `scripts/`, and is self-validating �
 ```bash
 node scripts/analyze-cross-ranking.mjs            # what the experimental ranker changes
 node scripts/analyze-pair-tracking.mjs            # first-pair tracking difficulty model
-node scripts/analyze-line-votes.mjs <votes.csv>   # blind A/B votes exported from dev tools
+node scripts/analyze-line-votes.mjs <votes.csv>   # line verdicts exported from dev tools
 ```
 
 ## Further help

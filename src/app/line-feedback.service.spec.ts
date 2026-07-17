@@ -1,6 +1,6 @@
 import { LineFeedbackRecord, LineFeedbackService } from './line-feedback.service';
 
-const STORAGE_KEY = 'cross-trainer.line-feedback.v1';
+const STORAGE_KEY = 'cross-trainer.line-feedback.v2';
 
 function aRecord(overrides: Partial<LineFeedbackRecord> = {}): LineFeedbackRecord {
   return {
@@ -8,9 +8,7 @@ function aRecord(overrides: Partial<LineFeedbackRecord> = {}): LineFeedbackRecor
     level: 5,
     scrambleIndex: 42,
     scramble: "R U R' F",
-    choice: 'A',
-    recommendedSide: 'A',
-    agreed: true,
+    verdict: 'better',
     holdsOnly: false,
     extraMoves: 0,
     ergoRecommended: 6.1,
@@ -50,10 +48,10 @@ describe('LineFeedbackService', () => {
   });
 
   it('appends rather than overwriting', () => {
-    service.record(aRecord({ choice: 'A' }));
-    service.record(aRecord({ choice: 'B' }));
+    service.record(aRecord({ verdict: 'better' }));
+    service.record(aRecord({ verdict: 'worse' }));
 
-    expect(service.all().map(r => r.choice)).toEqual(['A', 'B']);
+    expect(service.all().map(r => r.verdict)).toEqual(['better', 'worse']);
   });
 
   // Votes collected over weeks of practice must outlive the tab they were made in.
@@ -77,16 +75,17 @@ describe('LineFeedbackService', () => {
   });
 
   it('falls back to empty when the stored value is not an array', () => {
-    localStorage.setItem(STORAGE_KEY, '{"choice":"A"}');
+    localStorage.setItem(STORAGE_KEY, '{"verdict":"better"}');
 
     expect(service.all()).toEqual([]);
   });
 
-  it('keeps a disagreeing vote distinguishable from an equal one', () => {
-    service.record(aRecord({ choice: 'B', recommendedSide: 'A', agreed: false }));
-    service.record(aRecord({ choice: 'equal', recommendedSide: 'A', agreed: null }));
+  it('keeps all three verdicts distinguishable', () => {
+    service.record(aRecord({ verdict: 'better' }));
+    service.record(aRecord({ verdict: 'same' }));
+    service.record(aRecord({ verdict: 'worse' }));
 
-    expect(service.all().map(r => r.agreed)).toEqual([false, null]);
+    expect(service.all().map(r => r.verdict)).toEqual(['better', 'same', 'worse']);
   });
 
   describe('toCsv', () => {
@@ -96,24 +95,17 @@ describe('LineFeedbackService', () => {
       const [header, row, ...rest] = service.toCsv().split('\n');
 
       expect(header).toBe(
-        'timestamp,level,scrambleIndex,scramble,choice,recommendedSide,agreed,holdsOnly,' +
+        'timestamp,level,scrambleIndex,scramble,verdict,holdsOnly,' +
         'extraMoves,ergoRecommended,ergoSolver,movesRecommended,holdRecommended,movesSolver,holdSolver'
       );
       expect(row).toBe(
-        "2026-07-16T10:00:00.000Z,5,42,R U R' F,A,A,true,false,0,6.1,8.3,R D R,blue,L D L,green"
+        "2026-07-16T10:00:00.000Z,5,42,R U R' F,better,false,0,6.1,8.3,R D R,blue,L D L,green"
       );
       expect(rest).toEqual([]);
     });
 
     it('emits just the header when there is nothing recorded', () => {
       expect(service.toCsv().split('\n').length).toBe(1);
-    });
-
-    it('writes an empty cell for an equal vote rather than the string "null"', () => {
-      service.record(aRecord({ choice: 'equal', agreed: null }));
-      const row = service.toCsv().split('\n')[1];
-
-      expect(row.split(',')[6]).toBe('');
     });
 
     it('quotes cells containing a comma or quote', () => {

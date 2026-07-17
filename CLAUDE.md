@@ -35,7 +35,7 @@ Feature backlog with analysis and the user's verdicts: `docs/improvement-ideas.m
 - `src/app/PairTrackingData.ts` — **generated**; per-scramble pair features
 - `scripts/analyze-pair-tracking.mjs` — generates the above; the analysis/validation harness
 - `src/app/tracking-feedback.service.ts` — dev tools rating store (see below)
-- `src/app/line-feedback.service.ts` — dev tools blind line-vote store (see below)
+- `src/app/line-feedback.service.ts` — dev tools line-verdict store (see below)
 - `scripts/analyze-line-votes.mjs` — reads an exported line-votes CSV and reports agreement
 - `src/app/cross-ranker/` — **experimental** human-optimal solution ranking (see below)
 - `scripts/analyze-cross-ranking.mjs` — its analysis/validation harness
@@ -122,17 +122,17 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 
 **Don't build +2/+3** — they're monotonically worse and their best cases *shrink*, because algSpeed already charges each extra move's turning time and smoother fingertricks rarely repay it. (XCross is the thing that makes extra moves pay, because they buy an F2L pair; a plain cross only buys smoothness.) +1 survives only for the 9% that clear the margin.
 
-### Blind line voting (dev tools)
+### Line verdicts (dev tools)
 
-`line-feedback.service.ts` + the "Blind line comparison" toggle exist because the ranking is a model of ergonomics, not a measurement of yours. A vote is effectively a referendum on **algSpeed + the hold choice** — that is all the ranker uses.
+`line-feedback.service.ts` + the "is the experimental line better?" box exist because the ranking is a model of ergonomics, not a measurement of yours. A verdict (**better / about the same / worse**) is effectively a referendum on **algSpeed + the hold choice** — that is all the ranker uses.
+
+**This was a blind A/B until July 2026, and the blinding was dropped as theatre.** Blinding only works when the options have no tell, and these have an obvious one: the solver's line is F/B-heavy and the recommendation is R/U-heavy, so anyone who knows what the tool does can spot which is which instantly. The randomisation fooled nobody and cost the reader the context of knowing which line was which. What's left is an open preference report — which does carry some pull toward the tool's own pick, so read a high "better" rate with that in mind. The **"worse"** rows and the by-face slices are the parts that can still surprise us.
 
 Worth knowing when reading the results: algSpeed is one hobbyist's model of one grip style, and it was built to score OLL/PLL algs from a settled home grip — not cross lines executed cold out of inspection, full of D moves, with no AUF. That domain transfer is untested, so a disagreement can legitimately mean the model is wrong for these hands, not that the voter is.
 
-**It has to be a mode, not a panel:** the solver's line is displayed prominently and the experimental panel names its pick, so a vote shown next to them wouldn't be blind. With the toggle on, "Get Solution" reveals *only* an A/B — solver line, experimental panel **and pair tracking** all stay hidden (pair tracking describes the solver's line, so it leaks). Sides are randomised; after voting everything reveals plus which side was which. `ScrambleComponent.revealVisible` / `voteVisible` gate this, and specs cover the no-leak property.
+Separate store from `tracking-feedback.service.ts` on purpose: that rates how hard a pair is to **track**, this rates how nice a line is to **turn**. One store per question keeps both answerable. The key is `…line-feedback.v2` — v1 held the old A/B shape and was abandoned rather than migrated, since those rows answered a different question. Export the CSV and run `node scripts/analyze-line-votes.mjs <csv>` — it slices by `holdsOnly` (is the hold advice real on its own?), `extraMoves` (is the margin right?), and **by face** (does "worse" spike on B/L — an undrilled fingertrick — or is it flat, which points at the model?).
 
-Separate store from `tracking-feedback.service.ts` on purpose: that rates how hard a pair is to **track**, this rates how nice a line is to **turn**. One store per question keeps both answerable. Export the CSV and run `node scripts/analyze-line-votes.mjs <csv>` — it slices agreement by `holdsOnly` (is the hold advice real on its own?), `extraMoves` (is the margin right?), and **by face** (does disagreement spike on B/L — an undrilled fingertrick — or is it flat across faces, which points at the model?).
-
-Measured effect (see `docs/improvement-ideas.md` §5): ~52% of scrambles get a different line; ergo gain averages ~5 at levels 7–8; F/B moves drop 3.28 → 2.87 at level 8. Often the moves don't change at all and only the hold does (`L D L` → `R D R`), which is a free win.
+Measured effect over all 8000 scrambles (see `docs/improvement-ideas.md` §5 and the README charts): **49%** get a genuinely different line (0% at level 1, 99% at level 8); a further **35%** get the solver's own line in a better hold (`L D L` → `R D R` — the same solve from a better angle, and the free win); **4%** spend an extra move. Ergo gain averages ~5 at levels 7–8; F/B moves drop 3.23 → 2.83 at level 8.
 
 **Cross solver (`cstimer/cross.js`):** BFS/IDA* solver operating on a compact cube state representation (permutation + flip indices). Exported as `cross.solve(scrambleString)`. These are vendored JS files compiled with `allowJs: true` in tsconfig — they are ES module format and do not have type declarations.
 

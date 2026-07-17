@@ -173,17 +173,19 @@ Scoring is now `ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over ca
 
 **The lesson, twice over:** the cognitive-load idea was intuitive and both attempts to operationalise it failed — the first inert, the second real but dominated. **Ergonomics and the hold are the whole win.** If staging is revisited, it needs a different experiment: A/B two lines matched on ergonomics but far apart on staging, so the idea is judged on its own rather than as a tiebreaker that never breaks anything.
 
-### Blind line voting — ✅ DONE (July 2026)
+### Line verdicts — ✅ DONE (July 2026)
 
-`STAGING_WEIGHT` (1.0) and `EXTRA_MOVE_MARGIN` (1.5) were calibrated from score distributions, not hands. The dev tools now carry a **blind line comparison** mode: with it on, "Get Solution" shows only an A/B of the recommended line vs the solver's, sides randomised, everything else withheld (including pair tracking, which would leak the solver's line). Vote, then everything reveals along with which side was which — blind while judging, transparent afterwards.
+`EXTRA_MOVE_MARGIN` (1.5) was calibrated from score distributions, not hands. The dev tools now carry a **better / about the same / worse** box on the experimental line, stored via `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` slices by `holdsOnly`, `extraMoves`, and by face.
 
-Votes go to `line-feedback.service.ts` (localStorage + CSV, mirroring the tracking-difficulty store but kept separate — one store per question). `node scripts/analyze-line-votes.mjs <csv>` slices agreement by `holdsOnly` (is the hold advice real on its own?), `extraMoves` (is the margin right?), and by face.
+**It shipped as a blind A/B first, and the blinding lasted one session.** User's verdict: *"It's super obvious which blind is computer vs ergonomic."* And they're right — blinding only works when the options carry no tell, and these do: the solver's line is F/B-heavy, ours is R/U-heavy. Randomising the sides fooled nobody, cost the reader the context of knowing which was which, and required withholding the whole reveal (solution, experimental panel, pair tracking) until a vote landed — a lot of machinery for a disguise anyone could see through. Removed; the storage key went to `v2` rather than migrating, since the v1 rows answered a different question.
 
-**What a vote actually measures.** Since staging is gone, the recommendation is "best algSpeed across candidates and holds" — so a vote is a referendum on **algSpeed's ergonomics model plus the hold choice**, nothing else.
+**What that costs, honestly:** an open preference report carries some pull toward the tool's own pick. There's no fixing that here — the tell is intrinsic to what the feature does. So read a high "better" rate with suspicion; the **"worse"** rows and the by-face slices are the parts that can actually surprise us. If a genuinely blind test is ever wanted, it would have to compare two lines *without* an obvious signature — e.g. two candidates matched on face mix but differing on the thing being tested.
 
-**A disagreement is not automatically the voter's gap.** Treating it that way would make the experiment unfalsifiable. algSpeed is one hobbyist's model of one grip style, and — the untested part — it was built to score OLL/PLL algs from a settled home grip, not cross lines executed cold out of inspection, full of D moves, with no AUF. The face slices exist to separate the two explanations: disagreement spiking on lines containing B or L suggests an undrilled fingertrick; disagreement flat across faces suggests the model doesn't fit these hands. For a personal tool, "nicer for you" is the right target — if the hands disagree with algSpeed, follow the hands.
+**What a verdict actually measures.** Since staging is gone, the recommendation is "best algSpeed across candidates and holds" — so a verdict is a referendum on **algSpeed's ergonomics model plus the hold choice**, nothing else.
 
-**Open questions / next:** collect votes and settle `EXTRA_MOVE_MARGIN` (the only knob left) and whether algSpeed transfers to cross at all; F2L-pair preservation as a ranking term is still deferred.
+**A "worse" verdict is not automatically the voter's gap.** Treating it that way would make the experiment unfalsifiable. algSpeed is one hobbyist's model of one grip style, and — the untested part — it was built to score OLL/PLL algs from a settled home grip, not cross lines executed cold out of inspection, full of D moves, with no AUF. The face slices exist to separate the two explanations: "worse" spiking on lines containing B or L suggests an undrilled fingertrick; flat across faces suggests the model doesn't fit these hands. For a personal tool, "nicer for you" is the right target — if the hands disagree with algSpeed, follow the hands.
+
+**Open questions / next:** collect verdicts and settle `EXTRA_MOVE_MARGIN` (the only knob left) and whether algSpeed transfers to cross at all; F2L-pair preservation as a ranking term is still deferred.
 
 ## Smaller / future ideas
 

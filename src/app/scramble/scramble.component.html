@@ -19,63 +19,31 @@
     </a>
     </div>
     <div class="outder">
-        <h2 class="ritle">Solution<ng-container *ngIf="solutionLevel && revealVisible"> (Level {{solutionLevel}})</ng-container></h2>
-
-        <!-- Blind vote. Nothing that identifies either line may render until the
-             vote is in, so the whole reveal below is gated on revealVisible. -->
-        <div class="line-vote" *ngIf="voteVisible">
-            <h3 class="line-vote-title">Which line is nicer to execute?</h3>
-            <div class="line-vote-option">
-                <span class="line-vote-label">A</span>
-                <span class="line-vote-hold">hold <strong>{{comparison.a.holdColour}}</strong> front</span>
-                <span class="line-vote-moves">{{comparison.a.moves}}</span>
-            </div>
-            <div class="line-vote-option">
-                <span class="line-vote-label">B</span>
-                <span class="line-vote-hold">hold <strong>{{comparison.b.holdColour}}</strong> front</span>
-                <span class="line-vote-moves">{{comparison.b.moves}}</span>
-            </div>
-            <div class="dev-tools-rating">
-                <a href="#" class="rating-option" *ngFor="let c of lineChoices" [class.rating-selected]="lineChoice === c.value" (click)="selectLine(c.value)">
-          {{ c.label }}
-        </a>
-                <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmitLine" (click)="submitLineVote()">Submit vote</a>
-            </div>
-            <p class="line-vote-note">White stays on the bottom for both. Which was which is revealed after you vote.</p>
-        </div>
-
-        <ng-container *ngIf="revealVisible">
-            <div class="scramble" ID="sol" STYLE="font-family:Helvetica, Arial; font-size:30pt">
-                <p>
-                    <label id="solutionText">
-            {{solution}}
-          </label>
-                </p>
-            </div>
-            <p class="solution-hold">Solver's line — hold <strong>green</strong> in front, white on the bottom</p>
-            <p class="line-vote-result" *ngIf="lineVoted && comparison">
-                <strong>{{comparison.recommendedSide}}</strong> was the experimental line (turn speed
-                {{ (comparison.recommendedSide === 'A' ? comparison.a.ergo : comparison.b.ergo) | number:'1.1-1' }});
-                the other was the solver's ({{ (comparison.recommendedSide === 'A' ? comparison.b.ergo : comparison.a.ergo) | number:'1.1-1' }}).
-                <ng-container *ngIf="lineChoice !== 'equal'">You {{ lineChoice === comparison.recommendedSide ? 'agreed with' : 'disagreed with' }} the ranking.</ng-container>
+        <h2 class="ritle">Solution<ng-container *ngIf="solutionLevel"> (Level {{solutionLevel}})</ng-container></h2>
+        <div class="scramble" ID="sol" STYLE="font-family:Helvetica, Arial; font-size:30pt">
+            <p>
+                <label id="solutionText">
+          {{solution}}
+        </label>
             </p>
-            <div class="human-reveal" *ngIf="humanReveal">
-                <h3 class="human-reveal-title">
-                    <span class="experimental-badge">Experimental</span> Easier line to execute
-                </h3>
-                <p class="human-reveal-hold">Hold <strong>{{humanReveal.holdColour}}</strong> in front, white on the bottom</p>
-                <div class="human-reveal-moves">{{humanReveal.moves}}</div>
-                <p class="human-reveal-evidence">{{humanReveal.evidence}}</p>
-            </div>
-            <div class="pair-reveal" *ngIf="pairReveal.length">
-                <h3 class="pair-reveal-title">First pair tracking <span class="pair-reveal-scope">— for the solver's line, not the experimental one</span></h3>
-                <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
-                    <span class="pair-name">{{p.colors}}</span>
-                    <span class="pair-verdict">{{p.verdict}}</span>
-                    <span class="pair-evidence">{{p.evidence}}</span>
-                </p>
-            </div>
-        </ng-container>
+        </div>
+        <p class="solution-hold" *ngIf="solution">Solver's line — hold <strong>green</strong> in front, white on the bottom</p>
+        <div class="human-reveal" *ngIf="humanReveal">
+            <h3 class="human-reveal-title">
+                <span class="experimental-badge">Experimental</span> Easier line to execute
+            </h3>
+            <p class="human-reveal-hold">Hold <strong>{{humanReveal.holdColour}}</strong> in front, white on the bottom</p>
+            <div class="human-reveal-moves">{{humanReveal.moves}}</div>
+            <p class="human-reveal-evidence">{{humanReveal.evidence}}</p>
+        </div>
+        <div class="pair-reveal" *ngIf="pairReveal.length">
+            <h3 class="pair-reveal-title">First pair tracking <span class="pair-reveal-scope">— for the solver's line, not the experimental one</span></h3>
+            <p *ngFor="let p of pairReveal" class="pair-row" [class.pair-recommended]="p.recommended">
+                <span class="pair-name">{{p.colors}}</span>
+                <span class="pair-verdict">{{p.verdict}}</span>
+                <span class="pair-evidence">{{p.evidence}}</span>
+            </p>
+        </div>
     </div>
     <div class="dev-tools">
         <h3 class="dev-tools-title">Dev tools — rate tracking difficulty</h3>
@@ -93,17 +61,21 @@
         </p>
     </div>
     <div class="dev-tools">
-        <h3 class="dev-tools-title">Dev tools — vote on the experimental line</h3>
-        <div class="dev-tools-rating">
-            <a href="#" class="rating-option" [class.rating-selected]="blindMode" (click)="toggleBlindMode()">
-        Blind line comparison: {{ blindMode ? 'on' : 'off' }}
+        <h3 class="dev-tools-title">Dev tools — is the experimental line better?</h3>
+        <div class="dev-tools-rating" *ngIf="judgement && !lineVoted">
+            <a href="#" class="rating-option" *ngFor="let v of lineVerdicts" [class.rating-selected]="lineVerdict === v.value" (click)="selectLineVerdict(v.value)">
+        {{ v.label }}
       </a>
+            <a href="#" class="rating-submit" [class.rating-disabled]="!canSubmitLine" (click)="submitLineVote()">Submit</a>
         </div>
+        <p class="dev-tools-recorded" *ngIf="lineVoted">Recorded ✓ — get a new scramble to rate again.</p>
+        <p class="dev-tools-hint" *ngIf="!judgement && !lineVoted">
+            {{ solution ? 'Nothing to judge here — the experimental line is the solver’s own, in the same hold.' : 'Reveal a solution to rate its experimental line.' }}
+        </p>
         <p class="dev-tools-footer">
-            <span class="dev-tools-count">{{ lineFeedbackCount }} vote{{ lineFeedbackCount === 1 ? '' : 's' }} recorded</span>
+            <span class="dev-tools-count">{{ lineFeedbackCount }} verdict{{ lineFeedbackCount === 1 ? '' : 's' }} recorded</span>
             <a href="#" (click)="downloadLineCsv()">Download CSV</a>
             <a href="#" class="dev-tools-clear" (click)="clearLineFeedback()">Clear</a>
         </p>
-        <p class="dev-tools-hint" *ngIf="blindMode">Get Solution now hides the answer and asks you to pick blind.</p>
     </div>
 </ng-container>

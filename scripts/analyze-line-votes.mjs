@@ -1,8 +1,14 @@
-// Reads a line-votes CSV (Dev tools → vote on the experimental line → Download
+// Reads a line-votes CSV (Dev tools → is the experimental line better? → Download
 // CSV) and reports whether the ranker agrees with your hands.
 //
-// The ranker picks by algSpeed plus a hold, so a vote is a referendum on exactly
-// those two things. These slices turn that into evidence:
+// The ranker picks by algSpeed plus a hold, so a verdict is a referendum on
+// exactly those two things. These slices turn that into evidence:
+//
+// Not blind, by design: the two lines have obvious signatures (the solver's is
+// F/B-heavy, ours is R/U-heavy), so randomising them fooled nobody. That means
+// these numbers carry some pull toward the tool's own pick — read a high "better"
+// rate with that in mind, and treat the "worse" rows and the by-face slices as the
+// parts that can actually surprise you.
 //
 //   holdsOnly=true   - both lines are the same moves and only the hold differs,
 //                      so this slice measures the hold advice on its own.
@@ -71,15 +77,16 @@ if (!records.length) {
   process.exit(0);
 }
 
-// agreed is blank for an "equal" verdict, which is neither agreement nor
-// disagreement - it must not be counted as either.
-const decided = records.filter((r) => r.agreed === 'true' || r.agreed === 'false');
-const equal = records.filter((r) => r.choice === 'equal');
-const agreedOf = (rs) => rs.filter((r) => r.agreed === 'true').length;
+// "same" is a real answer, not a failure to agree - it is excluded from the rate
+// rather than counted as either side.
+const isDecided = (r) => r.verdict === 'better' || r.verdict === 'worse';
+const decided = records.filter(isDecided);
+const same = records.filter((r) => r.verdict === 'same');
+const agreedOf = (rs) => rs.filter((r) => r.verdict === 'better').length;
 
 function report(label, rs) {
-  const count = `${rs.length} vote${rs.length === 1 ? '' : 's'}`.padStart(9);
-  const d = rs.filter((r) => r.agreed === 'true' || r.agreed === 'false');
+  const count = `${rs.length} verdict${rs.length === 1 ? '' : 's'}`.padStart(12);
+  const d = rs.filter(isDecided);
   if (!d.length) {
     console.log(`  ${label.padEnd(26)} ${count}   (none decided)`);
     return;
@@ -87,15 +94,15 @@ function report(label, rs) {
   const pct = ((100 * agreedOf(d)) / d.length).toFixed(0);
   const eq = rs.length - d.length;
   console.log(
-    `  ${label.padEnd(26)} ${count}   ${String(pct).padStart(3)}% agree` +
-    `   (${agreedOf(d)}/${d.length} decided${eq ? `, ${eq} equal` : ''})`
+    `  ${label.padEnd(26)} ${count}   ${String(pct).padStart(3)}% better` +
+    `   (${agreedOf(d)}/${d.length} decided${eq ? `, ${eq} same` : ''})`
   );
 }
 
-console.log(`${records.length} votes, ${decided.length} decided, ${equal.length} called equal\n`);
+console.log(`${records.length} verdicts, ${decided.length} decided, ${same.length} called about the same\n`);
 
 console.log('Overall');
-report('all votes', records);
+report('all verdicts', records);
 
 console.log('\nIs the hold advice real?');
 report('hold only (same moves)', records.filter((r) => r.holdsOnly === 'true'));
@@ -124,7 +131,7 @@ for (let level = 1; level <= 8; level++) {
 // particular face, that face is the story — B and L are the usual suspects, since
 // they are the ones people drill least. If disagreement is flat across every face,
 // no single fingertrick explains it and the model is the likelier culprit.
-console.log('\nWhen you disagree, what was in the line you rejected?');
+console.log('\nWhen you call it worse, what was in the line you rejected?');
 console.log('(a spike on one face suggests an undrilled fingertrick; flat suggests the model)');
 for (const face of ['R', 'L', 'U', 'D', 'F', 'B']) {
   // the recommended line is the one being judged, so slice on its moves
@@ -150,9 +157,9 @@ for (const face of ['R', 'L', 'U', 'D', 'F', 'B']) {
 const overall = decided.length ? (100 * agreedOf(decided)) / decided.length : NaN;
 console.log('');
 if (decided.length < 20) {
-  console.log(`Only ${decided.length} decided votes — too few to conclude anything yet. Aim for 20+ per slice.`);
+  console.log(`Only ${decided.length} decided verdicts — too few to conclude anything yet. Aim for 20+ per slice.`);
 } else if (overall < 55) {
-  console.log(`Overall agreement ${overall.toFixed(0)}% is near chance: the ranking is not tracking your judgement.`);
+  console.log(`Only ${overall.toFixed(0)}% of decided verdicts say "better" — the ranking is not tracking your judgement.`);
 } else {
-  console.log(`Overall agreement ${overall.toFixed(0)}%.`);
+  console.log(`${overall.toFixed(0)}% of decided verdicts say "better". Not blind, so expect some pull toward the tool's pick.`);
 }

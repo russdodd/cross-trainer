@@ -1,9 +1,17 @@
-// Blind votes on which cross line is nicer to execute.
+// Verdicts on whether the experimental line is actually nicer to execute.
 //
 // The ranker picks by algSpeed (a model of ergonomics) plus a hold, with
 // EXTRA_MOVE_MARGIN calibrated from score distributions rather than from anyone's
-// hands. Each record pairs a blind verdict with what the ranker thought, so that
-// can be settled on evidence instead.
+// hands. Each record pairs a verdict with what the ranker thought, so that can be
+// settled on evidence instead.
+//
+// This started as a BLIND A/B and the blinding was dropped (July 2026): the two
+// lines have obvious signatures - the solver's is F/B-heavy, the recommendation is
+// R/U-heavy - so anyone who knows what the tool does can tell them apart at a
+// glance. Randomising the sides was theatre, and it cost the reader the context of
+// knowing which line was which. What remains is an open preference report, which
+// carries some pull toward the tool's own pick; "worse" verdicts and the by-face
+// slices are the parts that can still surprise us.
 //
 // Deliberately separate from tracking-feedback.service.ts: that rates how hard a
 // pair is to TRACK, this rates how nice a line is to TURN. One store per
@@ -15,7 +23,8 @@
 
 import { Injectable } from '@angular/core';
 
-export type LineChoice = 'A' | 'B' | 'equal';
+/** Is the experimental line nicer to execute than the solver's? */
+export type LineVerdict = 'better' | 'same' | 'worse';
 
 export interface LineFeedbackRecord {
   timestamp: string;
@@ -24,12 +33,8 @@ export interface LineFeedbackRecord {
   /** (level, scrambleIndex) identifies the row in Scrambles.ts. */
   scrambleIndex: number;
   scramble: string;
-  /** Which side the voter picked, with the sides shown in random order. */
-  choice: LineChoice;
-  /** Which side was the ranker's pick — the thing being judged. */
-  recommendedSide: 'A' | 'B';
-  /** Did the vote match the ranker? null when the voter called it equal. */
-  agreed: boolean | null;
+  /** The judgement: is the experimental line better than the solver's? */
+  verdict: LineVerdict;
   /** True when both lines are the same moves and only the hold differs. */
   holdsOnly: boolean;
   /** Moves the recommendation added over optimal (0 or 1). Slices the margin question. */
@@ -42,16 +47,17 @@ export interface LineFeedbackRecord {
   holdSolver: string;
 }
 
-const STORAGE_KEY = 'cross-trainer.line-feedback.v1';
+// v2: the record shape changed when blinding was dropped (choice/recommendedSide/
+// agreed -> verdict). A new key rather than a migration - the v1 rows judged a
+// different question, and mixing shapes would emit blank columns into the CSV.
+const STORAGE_KEY = 'cross-trainer.line-feedback.v2';
 
 const COLUMNS: (keyof LineFeedbackRecord)[] = [
   'timestamp',
   'level',
   'scrambleIndex',
   'scramble',
-  'choice',
-  'recommendedSide',
-  'agreed',
+  'verdict',
   'holdsOnly',
   'extraMoves',
   'ergoRecommended',

@@ -6,7 +6,7 @@ import { TrackingFeedbackService } from '../tracking-feedback.service';
 import { LineFeedbackService } from '../line-feedback.service';
 
 const STORAGE_KEY = 'cross-trainer.tracking-feedback.v1';
-const LINE_STORAGE_KEY = 'cross-trainer.line-feedback.v1';
+const LINE_STORAGE_KEY = 'cross-trainer.line-feedback.v2';
 
 describe('ScrambleComponent rating box', () => {
 
@@ -128,13 +128,13 @@ describe('ScrambleComponent rating box', () => {
   });
 });
 
-describe('ScrambleComponent blind line vote', () => {
+describe('ScrambleComponent line verdict', () => {
 
   let lineFeedback: LineFeedbackService;
   let component: ScrambleComponent;
 
-  // Level 8 always has an alternative worth comparing, so the A/B is never null.
-  const drawWithComparison = () => {
+  // Level 8 always has an alternative worth judging, so `judgement` is never null.
+  const revealLevel8 = () => {
     component.minLevel = 8;
     component.maxLevel = 8;
     component.newScramble();
@@ -152,124 +152,86 @@ describe('ScrambleComponent blind line vote', () => {
     localStorage.removeItem(STORAGE_KEY);
   });
 
-  it('does not build a comparison when blind mode is off', () => {
-    component.minLevel = 8;
-    component.maxLevel = 8;
+  it('has nothing to judge before a solution is revealed', () => {
     component.newScramble();
-    component.toggleSolution();
 
-    expect(component.comparison).toBeNull();
-    expect(component.voteVisible).toBe(false);
-    expect(component.revealVisible).toBe(true);
+    expect(component.judgement).toBeNull();
+    expect(component.canSubmitLine).toBe(false);
   });
 
-  // The point of the whole exercise: if the answer leaks before the vote, the
-  // vote is worthless.
-  it('hides the reveal until the vote is in', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
+  it('cannot submit without picking a verdict', () => {
+    revealLevel8();
 
-    expect(component.voteVisible).toBe(true);
-    expect(component.revealVisible).toBe(false);
-
-    component.selectLine('A');
-    component.submitLineVote();
-
-    expect(component.revealVisible).toBe(true);
-    expect(component.voteVisible).toBe(false);
-  });
-
-  it('cannot submit without picking a side', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-
+    expect(component.judgement).not.toBeNull();
     expect(component.canSubmitLine).toBe(false);
     component.submitLineVote();
     expect(lineFeedback.count()).toBe(0);
   });
 
-  it('records agreement when the pick matches the recommended side', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
+  it('records the verdict with the lines it was judging', () => {
+    revealLevel8();
+    const j = component.judgement!;
 
-    component.selectLine(component.comparison!.recommendedSide);
-    component.submitLineVote();
-
-    expect(lineFeedback.count()).toBe(1);
-    expect(lineFeedback.all()[0].agreed).toBe(true);
-  });
-
-  it('records disagreement when the pick is the other side', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-
-    const other = component.comparison!.recommendedSide === 'A' ? 'B' : 'A';
-    component.selectLine(other);
-    component.submitLineVote();
-
-    expect(lineFeedback.all()[0].agreed).toBe(false);
-  });
-
-  // "equal" is a verdict in its own right, not a failure to agree.
-  it('records an equal vote as neither agreed nor disagreed', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-
-    component.selectLine('equal');
-    component.submitLineVote();
-
-    expect(lineFeedback.all()[0].agreed).toBeNull();
-  });
-
-  it('does not record a second vote for the same reveal', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-
-    component.selectLine('A');
-    component.submitLineVote();
-    component.submitLineVote();
-
-    expect(lineFeedback.count()).toBe(1);
-  });
-
-  it('stores the recommended line under the recommended columns, whichever side it was shown on', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-
-    const c = component.comparison!;
-    const ours = c.recommendedSide === 'A' ? c.a : c.b;
-    component.selectLine('A');
+    component.selectLineVerdict('better');
     component.submitLineVote();
 
     const row = lineFeedback.all()[0];
-    expect(row.movesRecommended).toBe(ours.moves);
-    expect(row.holdRecommended).toBe(ours.holdColour);
-    expect(row.ergoRecommended).toBe(ours.ergo);
+    expect(row.verdict).toBe('better');
+    expect(row.movesRecommended).toBe(j.movesRecommended);
+    expect(row.holdRecommended).toBe(j.holdRecommended);
+    expect(row.movesSolver).toBe(j.movesSolver);
+    expect(row.ergoRecommended).toBe(j.ergoRecommended);
+    expect(row.level).toBe(8);
   });
 
-  it('starts the reveal over when blind mode is toggled mid-solution', () => {
-    component.minLevel = 8;
-    component.maxLevel = 8;
-    component.newScramble();
-    component.toggleSolution();
-    expect(component.solution).not.toBe('');
+  // A "worse" verdict is the whole point of collecting these — it must record as
+  // readily as agreement does.
+  it('records a dissenting verdict just the same', () => {
+    revealLevel8();
 
-    component.toggleBlindMode();
+    component.selectLineVerdict('worse');
+    component.submitLineVote();
 
-    expect(component.solution).toBe('');
-    expect(component.comparison).toBeNull();
+    expect(lineFeedback.all()[0].verdict).toBe('worse');
   });
 
-  it('clears the vote when a new scramble is drawn', () => {
-    component.toggleBlindMode();
-    drawWithComparison();
-    component.selectLine('A');
+  it('does not record a second verdict for the same reveal', () => {
+    revealLevel8();
+    component.selectLineVerdict('better');
+    component.submitLineVote();
+    component.submitLineVote();
+
+    expect(lineFeedback.count()).toBe(1);
+  });
+
+  it('ignores a verdict change after submitting', () => {
+    revealLevel8();
+    component.selectLineVerdict('better');
+    component.submitLineVote();
+
+    component.selectLineVerdict('worse');
+
+    expect(component.lineVerdict).toBe('better');
+    expect(lineFeedback.all()[0].verdict).toBe('better');
+  });
+
+  it('clears the verdict when a new scramble is drawn', () => {
+    revealLevel8();
+    component.selectLineVerdict('better');
     component.submitLineVote();
 
     component.newScramble();
 
     expect(component.lineVoted).toBe(false);
-    expect(component.lineChoice).toBeNull();
-    expect(component.comparison).toBeNull();
+    expect(component.lineVerdict).toBeNull();
+    expect(component.judgement).toBeNull();
+  });
+
+  it('reveals the solution and the experimental line without any gating', () => {
+    revealLevel8();
+
+    expect(component.solution).not.toBe('');
+    expect(component.humanReveal).not.toBeNull();
+    expect(component.pairReveal.length).toBe(4);
   });
 });
