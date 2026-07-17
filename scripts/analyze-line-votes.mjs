@@ -1,14 +1,15 @@
 // Reads a line-votes CSV (Dev tools → vote on the experimental line → Download
 // CSV) and reports whether the ranker agrees with your hands.
 //
-// This is the point of the voting harness: STAGING_WEIGHT and EXTRA_MOVE_MARGIN
-// in src/app/cross-ranker/cross-ranker.js were calibrated from score
-// distributions, not from solving. These slices turn them into evidence:
+// The ranker picks by algSpeed plus a hold, so a vote is a referendum on exactly
+// those two things. These slices turn that into evidence:
 //
 //   holdsOnly=true   - both lines are the same moves and only the hold differs,
 //                      so this slice measures the hold advice on its own.
 //   extraMoves=1     - the ranker paid EXTRA_MOVE_MARGIN for a longer line.
 //                      Low agreement here means the margin is too cheap.
+//   by face          - is a disagreement an undrilled fingertrick or a model that
+//                      does not fit these hands? See the note further down.
 //
 // Usage: node scripts/analyze-line-votes.mjs <path-to-csv>
 
@@ -109,6 +110,38 @@ for (let level = 1; level <= 8; level++) {
   const rs = records.filter((r) => Number(r.level) === level);
   if (rs.length) {
     report(`level ${level}`, rs);
+  }
+}
+
+// Is a disagreement your gap, or the model's?
+//
+// algSpeed is one hobbyist's model of one grip style, and it was built to score
+// OLL/PLL algs from a settled home grip — not cross solutions executed cold out
+// of inspection. So a disagreement can genuinely mean the model is wrong for your
+// hands. It can also mean you haven't drilled that fingertrick.
+//
+// These slices separate the two. If your "no" votes pile up on lines containing a
+// particular face, that face is the story — B and L are the usual suspects, since
+// they are the ones people drill least. If disagreement is flat across every face,
+// no single fingertrick explains it and the model is the likelier culprit.
+console.log('\nWhen you disagree, what was in the line you rejected?');
+console.log('(a spike on one face suggests an undrilled fingertrick; flat suggests the model)');
+for (const face of ['R', 'L', 'U', 'D', 'F', 'B']) {
+  // the recommended line is the one being judged, so slice on its moves
+  const withFace = records.filter((r) => r.movesRecommended.split(/\s+/).some((m) => m[0] === face));
+  if (withFace.length) {
+    report(`recommendation had ${face}`, withFace);
+  }
+}
+
+// A face the recommendation uses and the solver's line does not is the sharpest
+// version of the same question: it is exactly what our advice added.
+console.log('\nFaces our line introduced that the solver\'s line did not:');
+for (const face of ['R', 'L', 'U', 'D', 'F', 'B']) {
+  const has = (moves) => moves.split(/\s+/).some((m) => m[0] === face);
+  const introduced = records.filter((r) => has(r.movesRecommended) && !has(r.movesSolver));
+  if (introduced.length) {
+    report(`we added ${face}`, introduced);
   }
 }
 

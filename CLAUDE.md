@@ -96,14 +96,12 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 |---|---|
 | `cross-states.js` | Exact BFS distance table over all 190,080 cross states + enumeration of every optimal / optimal+1 line |
 | `algSpeed.js` | **Vendored** from [Trangium's MovecountCoefficient](https://github.com/trangium/trangium.github.io) (MIT, © 2021 trangium). Simulates grips/fingertricks; lower = faster. Body verbatim; only a header + `export` added |
-| `cube-tracker.js` | Oriented cross-edge tracker (position **and** orientation, unlike the pair-tracking one) + the `staged` metric |
+| `cube-tracker.js` | Oriented cross-edge tracker (position **and** orientation, unlike the pair-tracking one). Used to prove a recommended line really solves the cross |
 | `cross-ranker.js` | Scores candidates × 4 holds; `ergonomics()` is the only caller of algSpeed |
 
-**Scoring:** `score = ergonomics + EXTRA_MOVE_MARGIN × extraMoves − STAGING_WEIGHT × staged`. All three knobs are exported constants in `cross-ranker.js`, tunable without regenerating anything.
+**Scoring:** `score = ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over candidates × 4 holds. Both knobs are exported constants in `cross-ranker.js`, tunable without regenerating anything.
 
-- `staged` (0–1) is the area under the "cross edges done so far" curve: 1 = built in stages, 0 = everything lands on the last move. It replaced a "breaks a placed edge" metric that was **inert** (~0 for nearly every optimal cross solution).
-- `staged` is **alignment-tolerant**: an edge on the bottom, white down, in the right relative order is counted done, because one final D aligns the whole cross and nobody tracks those pieces meanwhile. `solvedCountAligned` takes the best single D offset. It is self-limiting — two bottom edges in the wrong relative order credit 1, not 2, since no offset places both. **`crossSolved` stays strict** (the validation harness depends on it: an unaligned cross genuinely isn't solved).
-- **Staging is close to inert in practice.** At `STAGING_WEIGHT = 1.5` it changes ~1% of picks (2.5 → ~4%), and where it does, the ergo and staged deltas are ~0.00 — it only separates genuine ties, because ergonomic differences between candidates dwarf staged's ~0.25 spread. That's the intended design, but it means **staging is not what makes the recommendations good** — ergonomics and the hold are. The blind line votes are the way to settle whether it deserves more weight.
+- **A third term, "staging", was tried and removed (July 2026).** The idea (the user's) was to reward building the cross in stages rather than having every piece interact at once. Two metrics were tried: "breaks an already-placed edge" was inert (~0 for nearly every optimal cross solution), and its replacement — area under the "edges done so far" curve — changed **~1% of picks** even after its own bug was fixed, because ergonomic differences between candidates dwarfed its ~0.25 spread. It only ever separated genuine ties. Removed as complexity for negligible benefit; the full story and numbers are in `docs/improvement-ideas.md` §5. **Ergonomics and the hold are what make the recommendations good.**
 - `EXTRA_MOVE_MARGIN` exists because algSpeed already prices the extra move's turning time, so without it a +1 line wins on noise (8.0 vs 7.9). It charges the +1 line for memory load algSpeed doesn't model. At 1.5, +1 usage drops from ~35% → ~6%.
 
 **Why it duplicates cross.js's state maths:** `cross.js` keeps `fullmv`/`pmul`/`fmul`/`cmv` private and exposes only `solve()`. Enumerating *all* solutions needs the state space directly, and the solver must not be touched — so `cross-states.js` rebuilds the tables from `mathlib`'s public exports. It is not guesswork: its BFS histogram is asserted against the state counts `cross.js` hardcodes in `getEasyCross`, and it throws if they disagree.
@@ -126,11 +124,13 @@ Why it exists: `cross.solve()` returns whichever optimal line its IDA* search re
 
 ### Blind line voting (dev tools)
 
-`line-feedback.service.ts` + the "Blind line comparison" toggle exist because `STAGING_WEIGHT` / `EXTRA_MOVE_MARGIN` were calibrated from score distributions, not from anyone's hands.
+`line-feedback.service.ts` + the "Blind line comparison" toggle exist because the ranking is a model of ergonomics, not a measurement of yours. A vote is effectively a referendum on **algSpeed + the hold choice** — that is all the ranker uses.
+
+Worth knowing when reading the results: algSpeed is one hobbyist's model of one grip style, and it was built to score OLL/PLL algs from a settled home grip — not cross lines executed cold out of inspection, full of D moves, with no AUF. That domain transfer is untested, so a disagreement can legitimately mean the model is wrong for these hands, not that the voter is.
 
 **It has to be a mode, not a panel:** the solver's line is displayed prominently and the experimental panel names its pick, so a vote shown next to them wouldn't be blind. With the toggle on, "Get Solution" reveals *only* an A/B — solver line, experimental panel **and pair tracking** all stay hidden (pair tracking describes the solver's line, so it leaks). Sides are randomised; after voting everything reveals plus which side was which. `ScrambleComponent.revealVisible` / `voteVisible` gate this, and specs cover the no-leak property.
 
-Separate store from `tracking-feedback.service.ts` on purpose: that rates how hard a pair is to **track**, this rates how nice a line is to **turn**. One store per question keeps both answerable. Export the CSV and run `node scripts/analyze-line-votes.mjs <csv>` — it slices agreement by `holdsOnly` (is the hold advice real?) and `extraMoves` (is the margin right?).
+Separate store from `tracking-feedback.service.ts` on purpose: that rates how hard a pair is to **track**, this rates how nice a line is to **turn**. One store per question keeps both answerable. Export the CSV and run `node scripts/analyze-line-votes.mjs <csv>` — it slices agreement by `holdsOnly` (is the hold advice real on its own?), `extraMoves` (is the margin right?), and **by face** (does disagreement spike on B/L — an undrilled fingertrick — or is it flat across faces, which points at the model?).
 
 Measured effect (see `docs/improvement-ideas.md` §5): ~52% of scrambles get a different line; ergo gain averages ~5 at levels 7–8; F/B moves drop 3.28 → 2.87 at level 8. Often the moves don't change at all and only the hold does (`L D L` → `R D R`), which is a free win.
 

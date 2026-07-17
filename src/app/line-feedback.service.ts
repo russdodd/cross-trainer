@@ -1,9 +1,9 @@
 // Blind votes on which cross line is nicer to execute.
 //
-// The ranker's weights (STAGING_WEIGHT, EXTRA_MOVE_MARGIN in cross-ranker.js)
-// were calibrated from score distributions, not from anyone's hands. Each record
-// pairs a blind verdict with what the ranker thought, so the weights can be set
-// on evidence instead.
+// The ranker picks by algSpeed (a model of ergonomics) plus a hold, with
+// EXTRA_MOVE_MARGIN calibrated from score distributions rather than from anyone's
+// hands. Each record pairs a blind verdict with what the ranker thought, so that
+// can be settled on evidence instead.
 //
 // Deliberately separate from tracking-feedback.service.ts: that rates how hard a
 // pair is to TRACK, this rates how nice a line is to TURN. One store per
@@ -34,8 +34,6 @@ export interface LineFeedbackRecord {
   holdsOnly: boolean;
   /** Moves the recommendation added over optimal (0 or 1). Slices the margin question. */
   extraMoves: number;
-  /** Staged-ness of the recommended line, 0–1. */
-  staged: number;
   ergoRecommended: number;
   ergoSolver: number;
   movesRecommended: string;
@@ -56,7 +54,6 @@ const COLUMNS: (keyof LineFeedbackRecord)[] = [
   'agreed',
   'holdsOnly',
   'extraMoves',
-  'staged',
   'ergoRecommended',
   'ergoSolver',
   'movesRecommended',

@@ -6,9 +6,9 @@
 // never says which face to hold in front.
 //
 // This script enumerates every optimal and optimal+1 solution, scores each across
-// the 4 white-bottom holds (ergonomics via Trangium's algSpeed, plus a small
-// staging penalty), and reports what changes vs what the trainer shows today,
-// with worked samples to check against a real cube.
+// the 4 white-bottom holds (ergonomics via Trangium's algSpeed), and reports what
+// changes vs what the trainer shows today, with worked samples to check against a
+// real cube.
 //
 // The solver (src/app/cstimer/*) is used strictly read-only via cross.solve().
 //
@@ -23,8 +23,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { cross } from '../src/app/cstimer/cross.js';
 import { distanceTable } from '../src/app/cross-ranker/cross-states.js';
-import { rankSolutions, STAGING_WEIGHT } from '../src/app/cross-ranker/cross-ranker.js';
-import { selfCheck, trackSolution, crossEdgesAfterScramble, crossSolved, applyMove, parseMove } from '../src/app/cross-ranker/cube-tracker.js';
+import { rankSolutions, EXTRA_MOVE_MARGIN } from '../src/app/cross-ranker/cross-ranker.js';
+import { selfCheck, crossEdgesAfterScramble, crossSolved, applyMove, parseMove } from '../src/app/cross-ranker/cube-tracker.js';
 import { algSpeed } from '../src/app/cross-ranker/algSpeed.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -87,7 +87,7 @@ function analyze() {
   const t0 = Date.now();
   distanceTable();
   console.log(`distance table built and validated against cross.js's own state counts (${Date.now() - t0}ms)`);
-  console.log(`\nstaging weight: ${STAGING_WEIGHT}  |  sample: ${PER_LEVEL}/level\n`);
+  console.log(`\nextra-move margin: ${EXTRA_MOVE_MARGIN}  |  sample: ${PER_LEVEL}/level\n`);
 
   const rows = [];
   const samples = [];
@@ -96,7 +96,7 @@ function analyze() {
     const stride = Math.max(1, Math.floor(1000 / PER_LEVEL));
     const stats = {
       level, n: 0, changed: 0, usedExtra: 0, holds: {}, ergoGain: [], fbBefore: 0, fbAfter: 0,
-      stagedBefore: 0, stagedAfter: 0, candidates: 0, ms: 0,
+      candidates: 0, ms: 0,
     };
 
     for (let i = 0; i < 1000 && stats.n < PER_LEVEL; i += stride) {
@@ -116,7 +116,6 @@ function analyze() {
       }
 
       const currentErgo = algSpeed(current.join(' '), false, false);
-      const currentTrack = trackSolution(scrambleStr, current);
 
       stats.n++;
       stats.candidates += candidateCount;
@@ -126,11 +125,9 @@ function analyze() {
       stats.ergoGain.push(currentErgo - best.ergo);
       stats.fbBefore += countFaces(current, 'FB');
       stats.fbAfter += countFaces(best.moves, 'FB');
-      stats.stagedBefore += currentTrack.staged;
-      stats.stagedAfter += best.staged;
 
       if (samples.length < N_SAMPLES && level >= 3 && (i / stride) % 17 === 0) {
-        samples.push({ level, scrambleStr, current, currentErgo, currentTrack, best });
+        samples.push({ level, scrambleStr, current, currentErgo, best });
       }
     }
     rows.push(stats);
@@ -142,14 +139,12 @@ function analyze() {
 
   console.log('Recommended vs what the trainer shows today');
   console.log('(ergo gain: how much faster to execute, in algSpeed units, bigger is better)');
-  console.log('(staged: 1 = cross built up in stages, 0 = everything lands on the last move)\n');
-  console.log('lvl    n   changed  used +1   avg ergo gain   F/B moves        staged          avg cands   ms/scramble');
+  console.log('lvl    n   changed  used +1   avg ergo gain   F/B moves        avg cands   ms/scramble');
   for (const r of rows) {
     const fb = `${(r.fbBefore / r.n).toFixed(2)} -> ${(r.fbAfter / r.n).toFixed(2)}`;
-    const st = `${(r.stagedBefore / r.n).toFixed(2)} -> ${(r.stagedAfter / r.n).toFixed(2)}`;
     console.log(
       `  ${r.level}  ${String(r.n).padStart(4)}  ${pct(r.changed, r.n).padStart(6)}  ${pct(r.usedExtra, r.n).padStart(7)}   ` +
-      `${avg(r.ergoGain).toFixed(2).padStart(12)}   ${fb.padEnd(14)}  ${st.padEnd(14)}  ${String(Math.round(r.candidates / r.n)).padStart(7)}   ${(r.ms / r.n).toFixed(0).padStart(6)}`
+      `${avg(r.ergoGain).toFixed(2).padStart(12)}   ${fb.padEnd(14)}  ${String(Math.round(r.candidates / r.n)).padStart(7)}   ${(r.ms / r.n).toFixed(0).padStart(6)}`
     );
   }
 
@@ -171,8 +166,8 @@ function analyze() {
   console.log('='.repeat(78));
   for (const s of samples) {
     console.log(`\nLevel ${s.level}  scramble:  ${s.scrambleStr}`);
-    console.log(`  today      green front  ${s.current.join(' ').padEnd(26)} ergo ${s.currentErgo.toFixed(1).padStart(4)}  staged ${s.currentTrack.staged.toFixed(2)}  progress ${s.currentTrack.solvedAfter.join(',')}`);
-    console.log(`  recommend  ${(s.best.holdColour + ' front').padEnd(12)} ${s.best.moves.join(' ').padEnd(26)} ergo ${s.best.ergo.toFixed(1).padStart(4)}  staged ${s.best.staged.toFixed(2)}  progress ${s.best.solvedAfter.join(',')}${s.best.extraMoves ? '  (+1 move)' : ''}`);
+    console.log(`  today      green front  ${s.current.join(' ').padEnd(26)} ergo ${s.currentErgo.toFixed(1).padStart(4)}`);
+    console.log(`  recommend  ${(s.best.holdColour + ' front').padEnd(12)} ${s.best.moves.join(' ').padEnd(26)} ergo ${s.best.ergo.toFixed(1).padStart(4)}${s.best.extraMoves ? '  (+1 move)' : ''}`);
     if (s.best.base.join(' ') !== s.current.join(' ')) {
       console.log(`             (the same recommended line, stated green-front: ${s.best.base.join(' ')})`);
     } else {

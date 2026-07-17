@@ -13,7 +13,6 @@ function aRecord(overrides: Partial<LineFeedbackRecord> = {}): LineFeedbackRecor
     agreed: true,
     holdsOnly: false,
     extraMoves: 0,
-    staged: 0.5,
     ergoRecommended: 6.1,
     ergoSolver: 8.3,
     movesRecommended: "R D R",
@@ -98,10 +97,10 @@ describe('LineFeedbackService', () => {
 
       expect(header).toBe(
         'timestamp,level,scrambleIndex,scramble,choice,recommendedSide,agreed,holdsOnly,' +
-        'extraMoves,staged,ergoRecommended,ergoSolver,movesRecommended,holdRecommended,movesSolver,holdSolver'
+        'extraMoves,ergoRecommended,ergoSolver,movesRecommended,holdRecommended,movesSolver,holdSolver'
       );
       expect(row).toBe(
-        "2026-07-16T10:00:00.000Z,5,42,R U R' F,A,A,true,false,0,0.5,6.1,8.3,R D R,blue,L D L,green"
+        "2026-07-16T10:00:00.000Z,5,42,R U R' F,A,A,true,false,0,6.1,8.3,R D R,blue,L D L,green"
       );
       expect(rest).toEqual([]);
     });
