@@ -110,6 +110,15 @@ describe('TrackingFeedbackService', () => {
       expect(service.toCsv().split('\n').length).toBe(1);
     });
 
+    // Submit only requires one of rating / solutionMatch (ScrambleComponent.canSubmit),
+    // so either can legitimately be null on a stored row.
+    it('leaves the rating cell empty when only solutionMatch was answered', () => {
+      service.record(aRecord({ rating: null, solutionMatch: 'same' }));
+      const row = service.toCsv().split('\n')[1];
+
+      expect(row).toContain(',,5,hard,hard,true,same,false,42,');
+    });
+
     it('quotes cells containing a comma or quote', () => {
       service.record(aRecord({ scramble: 'R2, U"' }));
       const row = service.toCsv().split('\n')[1];

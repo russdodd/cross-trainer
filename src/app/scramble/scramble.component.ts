@@ -187,20 +187,23 @@ export class ScrambleComponent implements OnChanges {
         return this.revealedThisScramble;
     }
 
+    // At least one of the two questions must be answered — neither is required
+    // on its own, so a vote on only "same/different" (without a difficulty
+    // opinion) or only the difficulty (without revealing/comparing) both count.
     get canSubmit(): boolean {
-        return this.scramble !== "" && this.selectedRating !== null && !this.submitted;
+        return this.scramble !== "" && (this.selectedRating !== null || this.selectedMatch !== null) && !this.submitted;
     }
 
     // The only writer. An unsubmitted scramble is deliberately not recorded — a
-    // skipped rating is silence, not a verdict of "ok". solutionMatch is optional,
-    // so it rides along as null when left unanswered.
+    // skipped rating is silence, not a verdict of "ok". Either rating or
+    // solutionMatch may be left null when only the other was answered.
     submitRating(): boolean {
         if (!this.canSubmit) {
             return false;
         }
         this.feedback.record({
             timestamp: new Date().toISOString(),
-            rating: this.selectedRating!,
+            rating: this.selectedRating,
             level: this.scrambleLevel,
             grade: gradeScramble(decodePairFeatures(this.scrambleLevel, this.scrambleIndex)),
             bandFilter: this.trackingBand,

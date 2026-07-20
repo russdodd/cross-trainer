@@ -29,12 +29,28 @@ describe('ScrambleComponent rating box', () => {
     expect(feedback.count()).toBe(0);
   });
 
-  it('cannot submit without picking a rating', () => {
+  it('cannot submit with neither question answered', () => {
     component.newScramble();
 
     expect(component.canSubmit).toBe(false);
     component.submitRating();
     expect(feedback.count()).toBe(0);
+  });
+
+  // Neither question is individually required — only that at least one is
+  // answered. A vote on same/different alone, with no difficulty opinion,
+  // is a valid submission.
+  it('can submit with only the match answered, leaving the rating null', () => {
+    component.newScramble();
+    component.toggleSolution();
+    component.selectMatch('same');
+
+    expect(component.canSubmit).toBe(true);
+    component.submitRating();
+
+    expect(feedback.count()).toBe(1);
+    expect(feedback.all()[0].rating).toBeNull();
+    expect(feedback.all()[0].solutionMatch).toBe('same');
   });
 
   it('records one row on submit', () => {

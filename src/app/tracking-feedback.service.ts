@@ -17,7 +17,11 @@ export type SolutionMatch = 'same' | 'different';
 
 export interface TrackingFeedbackRecord {
   timestamp: string;
-  rating: Rating;
+  /**
+   * How hard the first pair was to track. Optional — Submit requires at least
+   * one of rating / solutionMatch, not both, so either can be skipped.
+   */
+  rating: Rating | null;
   /** Cross difficulty, 1–8. */
   level: number;
   /** The band the model assigned this scramble — what the rating is judging. */
