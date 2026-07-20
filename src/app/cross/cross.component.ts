@@ -21,6 +21,11 @@ export class CrossComponent {
     { value: 'hard', label: 'Hard first pair to track' },
   ];
 
+  // Advanced mode: the solution may trade a little ergonomics for a better
+  // first-pair outcome (docs/improvement-ideas.md §6). Off by default — learn
+  // the pure ergonomic cross first.
+  pairAware = false;
+
   showMethodology = false;
 
   get maxLevelOptions(): number[] {

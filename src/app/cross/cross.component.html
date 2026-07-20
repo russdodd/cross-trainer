@@ -21,6 +21,9 @@
             How tracking difficulty works {{ showMethodology ? '▴' : '▾' }}
         </a>
     </span>
+    <label class="pair-aware-toggle" title="Solutions may spend a little ergonomics to keep or improve the first F2L pair">
+        <input type="checkbox" [(ngModel)]="pairAware"> Pair-aware solutions
+    </label>
 </div>
 <div class="methodology">
     <div class="methodology-panel" *ngIf="showMethodology">
@@ -47,4 +50,4 @@
         </p>
     </div>
 </div>
-<app-scramble [minLevel]="minLevel" [maxLevel]="maxLevel" [trackingBand]="trackingBand"></app-scramble>
+<app-scramble [minLevel]="minLevel" [maxLevel]="maxLevel" [trackingBand]="trackingBand" [pairAware]="pairAware"></app-scramble>

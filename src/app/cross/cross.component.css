@@ -17,6 +17,22 @@ footer {
     align-items: flex-start;
 }
 
+.pair-aware-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* sits in the controls row at the dropdowns' text height */
+    margin: 12px 0 0 14px;
+    font-size: .95em;
+    cursor: pointer;
+    user-select: none;
+}
+
+.pair-aware-toggle input {
+    accent-color: rgb(var(--logo-color));
+    cursor: pointer;
+}
+
 .methodology-toggle {
     /* aligned to the dropdown's left edge, which .custom-dropdown insets by 10px */
     margin: -4px 0 0 10px;

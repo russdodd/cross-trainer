@@ -17,7 +17,11 @@ export type SolutionMatch = 'same' | 'different';
 
 export interface TrackingFeedbackRecord {
   timestamp: string;
-  rating: Rating;
+  /**
+   * How hard the first pair was to track. Optional — Submit requires at least
+   * one of rating / solutionMatch, not both, so either can be skipped.
+   */
+  rating: Rating | null;
   /** Cross difficulty, 1–8. */
   level: number;
   /** The band the model assigned this scramble — what the rating is judging. */
@@ -31,6 +35,12 @@ export interface TrackingFeedbackRecord {
    * when they didn't answer (e.g. rated without revealing the suggestion).
    */
   solutionMatch: SolutionMatch | null;
+  /**
+   * Whether pair-aware mode was on when the scramble was rated — the shown line
+   * (and so the tracking being judged) can differ between modes. Added after the
+   * key was created; old rows simply lack it and export as a blank cell.
+   */
+  pairAware: boolean;
   /** (level, scrambleIndex) identifies the row in Scrambles.ts. */
   scrambleIndex: number;
   scramble: string;
@@ -46,6 +56,7 @@ const COLUMNS: (keyof TrackingFeedbackRecord)[] = [
   'bandFilter',
   'solutionRevealed',
   'solutionMatch',
+  'pairAware',
   'scrambleIndex',
   'scramble',
 ];

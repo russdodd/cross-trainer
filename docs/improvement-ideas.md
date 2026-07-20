@@ -191,6 +191,76 @@ Scoring is now `ergonomics + EXTRA_MOVE_MARGIN × extraMoves`, minimised over ca
 
 **Open questions / next:** collect verdicts and settle `EXTRA_MOVE_MARGIN` (the only knob left) and whether algSpeed transfers to cross at all; F2L-pair preservation as a ranking term is still deferred.
 
+## 6. Pair-preserving cross choice — measured (July 2026), awaiting verdict
+
+**Idea (user's):** the ergonomic cross is chosen with zero awareness of the first F2L pair, which looks like a blind spot: sometimes a near-equal candidate — same length, or one extra move — would keep an already-connected corner+edge pair intact, or leave the best pair in a materially better state. This is standard human technique ("pair preservation", "cross+1 planning" — CubeSkills/Cubefreak/jperm), *not* XCross and not superhuman, but it walks that line, so it was measured before anything shipped.
+
+**Guardrails (user's, non-negotiable):**
+- Human-executable and **learnable**: every proposed line switch must have a one-sentence reason. The harness tags each reason `inspection-visible` (a pre-made pair you can see before solving) or `trackable` (an end state you can predict by tracking through the planned line — the exact skill this app trains). Nothing is proposed on evidence a human couldn't act on.
+- Not XCross: candidates stay plain cross lines ≤ optimal+1. Key insight: the ranker's enumeration already contains *every* human trick up to one extra move (including "insert a U mid-cross to dodge the pair"), so this is purely a selection/scoring question — no new search.
+
+**Outcome categories** (the user's ranking, best→worst; judged by the best pair, since that's the one you'd play): `solved` (free XCross) > `connected-U` (intact block on top) > `both-U` (unconnected but both on top) > `connected-vertical` / `connected-slot` (intact block, edge in the E-slice — split into corner-up vs corner-buried sub-cases) > `split` (corner up, edge in a slot) > `buried` (corner stuck in a slot).
+
+**Machinery:** `scripts/pair-state.mjs` — an *oriented* pair tracker (ordered sticker tuples; the position-only tracker's sort is exactly what discards orientation), with hand-derived self-checks (R carries the solved FR block up intact; R U R' extracts it to UFL/UF; R2 U splits it; F2 makes a vertical pair; quarter-turn⁴ and sexy⁶ identities). `scripts/analyze-pair-preservation.mjs` — the harness; analysis-only by construction (no emit flags exist), and it asserts every candidate line solves the cross with position *and* orientation, which is stricter than the shipped generator's check. `--limit N` smoke / `--all` full (~15 min, background it).
+
+**Measured, all 8000 scrambles:**
+
+*Pre-made connected pairs exist after ~14–19% of scrambles at every level.* What the current pick does with them, and what a ≤+1 candidate could do (kept-top = ends solved/connected-on-top; Δ = score cost of the cheapest rescue):
+
+| Level | premade | kept-top by current | rescuable ≤+1 | unrescuable | Δ med | Δ p90 |
+|---|---|---|---|---|---|---|
+| 1 | 14% | 36% | 16% | 48% | 2.5 | 2.5 |
+| 2 | 16% | 29% | 28% | 43% | 2.5 | 3.6 |
+| 3 | 14% | 30% | 45% | 25% | 2.6 | 4.7 |
+| 4 | 17% | 19% | 67% | 14% | 2.6 | 5.0 |
+| 5 | 15% | 23% | 70% | 6% | 2.7 | 4.0 |
+| 6 | 14% | 17% | 83% | 0% | 1.9 | 4.0 |
+| 7 | 16% | 12% | 88% | 0% | 1.6 | 2.9 |
+| 8 | 19% | 5% | 95% | 0% | 1.2 | 2.5 |
+
+The user's blind-spot hunch is confirmed and it *grows with level*: at levels 6–8 the current pick keeps a pre-made pair on top only 5–17% of the time, yet 83–95% of the broken ones are rescuable within the existing candidate budget, at a falling cost (median 1.2–1.9 ≈ one move's worth of algSpeed). 1–3% of rescues at levels 3+ are **literally free (Δ = 0.0)** — often the same moves reordered: `D' B2 L2` buries the pair, `D' L2 B2` keeps it connected on top, same score.
+
+*Beyond pre-made pairs:* the current pick's best-pair category averages rank ~2.6 (mostly `both-U`) at every level, while the best achievable within ≤+1 falls from 2.2 (level 1) to **0.0 (level 8)** — at level 7, 944/1000 scrambles have a candidate that outright *solves* a pair; at level 8, 1000/1000 (huge candidate sets, only 102 distinct states). But cheap is rarer than possible: a free-ish outright solve (Δ ≤ 1.5) exists on 4–12% of scrambles at levels 6–8, and a *near-free category upgrade* (Δ ≤ 0.5) on 18–30%.
+
+*Selection architectures* (the user's open question — phased "pair first, ergo second" vs a combined score; representative levels):
+
+| Level | architecture | changed | Δ med | Δ p90 | gain (ranks) |
+|---|---|---|---|---|---|
+| 4 | phased uncapped | 66% | 2.8 | 4.9 | 2.05 |
+| 4 | phased cap 1.5 | 19% | 0.7 | 1.4 | 2.41 |
+| 4 | combined W=1 | 27% | 1.2 | 2.5 | 2.92 |
+| 6 | phased uncapped | 95% | 3.1 | 5.6 | 2.14 |
+| 6 | phased cap 1.5 | 40% | 0.7 | 1.4 | 2.20 |
+| 6 | combined W=1 | 36% | 0.6 | 1.8 | 2.57 |
+| 8 | phased uncapped | 99% | 3.0 | 4.6 | 2.62 |
+| 8 | phased cap 1.5 | 68% | 0.8 | 1.4 | 2.05 |
+| 8 | combined W=1 | 55% | 0.6 | 1.7 | 2.39 |
+
+**Uncapped phased is confirmed expensive** (median sacrifice ~3 algSpeed units — about two moves — for ~2 category ranks): the user's instinct to be careful was right. The sweet spot is a *bounded* trade either way: capped phased (≤1.5) and combined W=1 both buy ~2–3 category ranks for a median Δ of 0.6–0.8, changing 20–55% of picks. Combined W=1 edges out capped-phased on gain-per-cost and has one smooth knob, same shape as `EXTRA_MOVE_MARGIN`. (Full sweep W ∈ {0.5,1,2,3} and caps {0.75,1.5} in the harness output.)
+
+*XCross comparison (levels 3–6, 100 scrambles each, min extra moves for cross + a full solved pair):*
+
+| Level | +0 | +1 | +2 | +3 | none ≤+3 |
+|---|---|---|---|---|---|
+| 3 | 1% | 7% | 15% | 49% | 28% |
+| 4 | 0% | 7% | 47% | 42% | 4% |
+| 5 | 3% | 18% | 58% | 21% | 0% |
+| 6 | 4% | 43% | 53% | 0% | 0% |
+
+"Just do XCross instead" is a different, bigger trade: at levels 3–5 a full pair usually costs +2/+3 extra moves (the territory already measured as ergonomically unpaying unless the pair repays it — which for XCross it does, but as a separate skill with real move-count cost). Preservation within ≤+1 is not XCross-lite; it's the free slice: keep what's already there, upgrade the category when a near-equal line happens to.
+
+**Worked samples** (in the harness output; two of the best): level 3 #5 — `D' B2 L2` vs `D' L2 B2`, identical score 6.4, the first buries the already-connected blue-orange pair, the second ends it connected on top. Level 4 #207 — `R2 F' B' L2` vs `R2 F' L2 B'`, identical score 7.8, buried vs connected-U. Same moves, different order. Cube-check these before trusting the model.
+
+**Caveats, honestly:** Δ is in algSpeed units (~0.8 = one R move; the +1 margin is 1.5) — "cheap" means cheap *by the model the ranker already trusts*. The `trackable` tier (candidate ends the pair well without a pre-made pair to see) is only actionable via the tracking skill; if only `inspection-visible` switches are wanted, the rescuable numbers in table 1 are the whole feature. At levels 1–2 pre-made pairs are often unrescuable (small candidate sets) — this is a mid-to-high-level feature.
+
+**Open (Phase B, gated on the verdict):** whether to ship as a combined score term (W≈1) vs capped-phased; whether it changes THE solution or lives on a **separate page/mode** — the user leans toward pair-awareness being a later-stage skill layered on after the ergonomic cross is solid, possibly with the pair-tracking controls moving there too. A regen of `CrossSolutionData.ts`/`PairTrackingData.ts` is required either way if any pick changes.
+
+**Cube-verified (July 2026):** both headline worked samples confirmed in hand — level 3 #5 ("100% spot on... captures the essence, a mini building block") and level 4 #207 ("100% this is also a valid case"). Notably the two are near-identical geometry: pair block at DBL/DL, white hidden at the back, one colour on the floor, and the order of the last two moves decides whether the block survives.
+
+**User's verdict (July 2026): build it.** Phase B approved as a **combined score** (ergonomics + `PAIR_WEIGHT` × category rank, W≈1 from the measured sweep) surfaced as a **pair-aware mode toggle on the cross page** — off shows today's ergonomic line untouched (the learn-the-cross-first path), on shows the pair-aware pick with its one-sentence human reason. Replacing the solution outright was rejected (conflicts with the progression instinct); a separate page was rejected (the two trainers would share almost all UI).
+
+**Implemented (July 2026):** `recommendPairAware()` + `PAIR_WEIGHT = 1` in `cross-ranker.js` over the oriented tracker `cross-ranker/pair-state.js` (moved in from the Phase A harness); `PairAwareSolutionData.ts` generated by the same `analyze-pair-tracking.mjs` pass as the other two data files (sparse: only differing lines are stored, with their own tracking features so the reveal describes the shown line); `pair-aware-solution.ts` builds the reason sentence from shipped meta; checkbox on `CrossComponent`, reveal wiring + `pairAware` CSV column in the feedback store. When the pick differs the reveal also shows a **comparison row** — the ergonomic line, its speed, and what it would have done to the same featured pair — added at the user's request so the mode's trades stay checkable in place. The ergonomic path is untouched — `recommendPairAware().best` is identical to `recommend().best`, verified by regen diff. Known v1 quirk: the band filter still buckets by the ergonomic line's features in pair-aware mode; only the reveal switches.
+
 ## Smaller / future ideas
 
 - **Keyboard-first flow:** spacebar = new scramble, `S` = toggle solution.
