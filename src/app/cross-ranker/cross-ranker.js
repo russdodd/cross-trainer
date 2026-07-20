@@ -18,6 +18,17 @@
 
 import { algSpeed } from './algSpeed.js';
 import { enumerateSolutions } from './cross-states.js';
+import {
+  stateAfterScramble,
+  applyTokens,
+  crossSolved,
+  categorizeAll,
+  bestRank,
+  rankOf,
+  SLOTS,
+  SLOT_COLORS,
+  isConnected,
+} from './pair-state.js';
 
 /**
  * What each extra move must earn, in algSpeed units, to be worth showing.
@@ -105,4 +116,83 @@ export function rankSolutions(scrambleStr, extra = 1) {
 export function recommend(scrambleStr, extra = 1) {
   const { optimal, candidateCount, ranked } = rankSolutions(scrambleStr, extra);
   return { optimal, candidateCount, best: ranked[0], ranked };
+}
+
+/**
+ * What one category rank of first-pair outcome is worth, in algSpeed units.
+ *
+ * Measured over all 8000 scrambles (docs/improvement-ideas.md §6): at 1, the
+ * pick changes on 27-55% of scrambles at levels 4-8, buying ~2.5 category ranks
+ * for a median sacrifice of 0.6-1.2 — under one move. Strictly prioritising the
+ * pair (the "phased" architecture) cost ~3 per pick and was rejected.
+ */
+export const PAIR_WEIGHT = 1;
+
+/**
+ * The recommended solution when the first F2L pair is taken into account.
+ *
+ * Same candidates as recommend() — every optimal and optimal+1 line in its best
+ * hold — rescored as score + PAIR_WEIGHT x (best pair's category rank), where
+ * categories are the human-ranked outcomes in pair-state.js (solved > connected
+ * on top > both on top > ...). A pair outcome only changes the pick when it is
+ * worth its ergonomic cost; ties keep the ergonomic pick. The pair's fate is
+ * decided by the physical moves alone, so each line is evaluated once (holds
+ * only relabel it).
+ *
+ * Returns both picks plus what the winning line does for its featured pair —
+ * enough to build the one-sentence human reason the UI shows.
+ */
+export function recommendPairAware(scrambleStr, extra = 1) {
+  const { optimal, candidateCount, ranked } = rankSolutions(scrambleStr, extra);
+  const start = stateAfterScramble(scrambleStr);
+  const premadeSlots = SLOTS.filter((slot) =>
+    isConnected(start.get('c' + slot), start.get('e' + slot))
+  );
+
+  // ranked is sorted by score, so the first sighting of each base is that
+  // physical line in its best hold — and the first entry overall is recommend()'s pick.
+  const seen = new Set();
+  let winner = null;
+  let ergonomic = null; // the first unique base IS recommend()'s pick
+  for (const cand of ranked) {
+    const key = cand.base.join(' ');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const end = applyTokens(start, cand.base);
+    if (!crossSolved(end)) {
+      throw new Error(`candidate "${cand.base.join(' ')}" does not solve the cross for "${scrambleStr}"`);
+    }
+    const cats = categorizeAll(end);
+    const rank = bestRank(cats);
+    const combined = cand.score + PAIR_WEIGHT * rank;
+    const entry = { cand, cats, rank, combined };
+    if (!ergonomic) ergonomic = entry;
+    if (!winner || combined < winner.combined) {
+      winner = entry;
+    }
+  }
+
+  // Featured pair: the slot delivering the winning line's best category,
+  // preferring one that was already connected after the scramble (the most
+  // human-visible reason), then slot order for determinism.
+  const featuredSlot =
+    SLOTS.filter((slot) => rankOf[winner.cats[slot]] === winner.rank).sort(
+      (a, b) => (premadeSlots.includes(a) ? 0 : 1) - (premadeSlots.includes(b) ? 0 : 1)
+    )[0];
+
+  return {
+    optimal,
+    candidateCount,
+    best: ranked[0],
+    pairAware: {
+      ...winner.cand,
+      differs: winner.cand !== ranked[0],
+      category: winner.cats[featuredSlot],
+      slot: featuredSlot,
+      colors: SLOT_COLORS[featuredSlot],
+      premade: premadeSlots.includes(featuredSlot),
+      /** The SAME featured pair's fate under the ergonomic line — the apples-to-apples comparison. */
+      ergonomicCategory: ergonomic.cats[featuredSlot],
+    },
+  };
 }

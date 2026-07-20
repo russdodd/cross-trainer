@@ -1,8 +1,9 @@
 
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { scrambles } from '../Scrambles';
 import {
   decodePairFeatures,
+  decodePairFeaturesFrom,
   describePair,
   gradeScramble,
   indicesForBand,
@@ -12,6 +13,7 @@ import {
 } from '../pair-tracking';
 import { Rating, SolutionMatch, TrackingFeedbackService } from '../tracking-feedback.service';
 import { crossSolutionFor } from '../cross-solution';
+import { pairAwareSolutionFor } from '../pair-aware-solution';
 
 export interface PairReveal {
   colors: string;
@@ -26,11 +28,12 @@ export interface PairReveal {
   templateUrl: './scramble.component.html',
   styleUrls: ['./scramble.component.css']
 })
-export class ScrambleComponent {
+export class ScrambleComponent implements OnChanges {
 
     @Input() minLevel = 1;
     @Input() maxLevel = 1;
     @Input() trackingBand: TrackingBand | 'any' = 'any';
+    @Input() pairAware = false;
 
     public scramble:any = "";
     public solution:any = "";
@@ -46,6 +49,12 @@ export class ScrambleComponent {
     public holdColour = "";
     public turnSpeed = 0;
     public extraMove = false;
+    // Pair-aware mode: why this line was picked, shown under the solution.
+    public pairReason = "";
+    public pairAwareSameLine = false;
+    // When the pick differs: the ergonomic line and the featured pair's fate
+    // under it, so the trade can be checked line against line.
+    public pairCompare: { moves: string; holdColour: string; turnSpeed: number; outcome: string } | null = null;
     private scrambleLevel = 0;
     private scrambleIndex = 0;
     private GetSolution:string = "Get Solution";
@@ -74,6 +83,15 @@ export class ScrambleComponent {
         private feedback: TrackingFeedbackService,
     ) {
         this.feedbackCount = this.feedback.count();
+    }
+
+    // Flipping the mode mid-scramble would leave a stale line on screen, so a
+    // revealed solution is hidden (not re-revealed: seeing both lines for free
+    // would also muddy the same/different rating).
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['pairAware'] && !changes['pairAware'].firstChange) {
+            this.clearSolution();
+        }
     }
 
     newScramble() {
@@ -118,14 +136,34 @@ export class ScrambleComponent {
         this.SolButtonText = this.HideSolution;
         this.revealedThisScramble = true;
 
-        const sol = crossSolutionFor(this.scrambleLevel, this.scrambleIndex);
-        this.solution = sol.moves;
+        if (this.pairAware) {
+            const sol = pairAwareSolutionFor(this.scrambleLevel, this.scrambleIndex);
+            this.solution = sol.moves;
+            this.holdColour = sol.holdColour;
+            this.turnSpeed = sol.turnSpeed;
+            this.pairReason = sol.reason;
+            this.pairAwareSameLine = !sol.differs;
+            this.pairCompare = sol.ergonomic && {
+                moves: sol.ergonomic.moves,
+                holdColour: sol.ergonomic.holdColour,
+                turnSpeed: sol.ergonomic.turnSpeed,
+                outcome: sol.ergonomic.outcome,
+            };
+            // The reveal must describe the line on screen; an alternate line
+            // ships its own tracking features.
+            this.pairReveal = this.buildPairReveal(
+                sol.pairFeatures ? decodePairFeaturesFrom(sol.pairFeatures) : undefined
+            );
+        } else {
+            const sol = crossSolutionFor(this.scrambleLevel, this.scrambleIndex);
+            this.solution = sol.moves;
+            this.holdColour = sol.holdColour;
+            this.turnSpeed = sol.turnSpeed;
+            this.pairReveal = this.buildPairReveal();
+        }
         this.solutionLevel = this.scrambleLevel;
-        this.holdColour = sol.holdColour;
-        this.turnSpeed = sol.turnSpeed;
         // The scramble's level is its optimal length; the ranker may spend one extra.
-        this.extraMove = sol.moves.split(' ').length > this.scrambleLevel;
-        this.pairReveal = this.buildPairReveal();
+        this.extraMove = this.solution.split(' ').length > this.scrambleLevel;
         return false;
     }
 
@@ -168,6 +206,7 @@ export class ScrambleComponent {
             bandFilter: this.trackingBand,
             solutionRevealed: this.revealedThisScramble,
             solutionMatch: this.selectedMatch,
+            pairAware: this.pairAware,
             scrambleIndex: this.scrambleIndex,
             scramble: this.scramble,
         });
@@ -213,6 +252,9 @@ export class ScrambleComponent {
         this.holdColour = "";
         this.turnSpeed = 0;
         this.extraMove = false;
+        this.pairReason = "";
+        this.pairAwareSameLine = false;
+        this.pairCompare = null;
         this.pairReveal = [];
     }
 
@@ -244,8 +286,10 @@ export class ScrambleComponent {
     }
 
     // Shown with the solution so every grade can be checked against the cube.
-    private buildPairReveal(): PairReveal[] {
-        const pairs = decodePairFeatures(this.scrambleLevel, this.scrambleIndex);
+    // Defaults to the shipped (ergonomic-line) features; pair-aware mode passes
+    // the alternate line's features when the line differs.
+    private buildPairReveal(pairsOverride?: ReturnType<typeof decodePairFeatures>): PairReveal[] {
+        const pairs = pairsOverride ?? decodePairFeatures(this.scrambleLevel, this.scrambleIndex);
         const best = recommendPair(pairs);
         return pairs
             .map(pair => ({

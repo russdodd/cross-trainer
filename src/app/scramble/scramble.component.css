@@ -15,6 +15,18 @@
     margin: 0 0 4px;
 }
 
+.solution-pair-reason {
+    font-size: 12pt;
+    opacity: 0.85;
+    margin: 0 0 4px;
+}
+
+.solution-compare {
+    font-size: 10.5pt;
+    opacity: 0.7;
+    margin: 0 0 4px;
+}
+
 .pair-reveal {
     text-align: left;
     max-width: 640px;

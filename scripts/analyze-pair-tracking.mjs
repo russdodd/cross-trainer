@@ -25,12 +25,18 @@
 // Usage: node scripts/analyze-pair-tracking.mjs \
 //          [--emit-ts src/app/PairTrackingData.ts] \
 //          [--emit-solution src/app/CrossSolutionData.ts] \
+//          [--emit-pair-aware src/app/PairAwareSolutionData.ts] \
 //          [--features-out <path.json>] [--limit <N per level, for smoke tests>]
+//
+// The pair-aware pick (recommendPairAware's combined score, shown behind the UI's
+// mode toggle) is analysed in the same pass: its line is validated the same way,
+// and --emit-pair-aware writes the sparse overlay data for it.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { recommend } from '../src/app/cross-ranker/cross-ranker.js';
+import { recommendPairAware } from '../src/app/cross-ranker/cross-ranker.js';
+import { CATEGORIES, SLOTS } from '../src/app/cross-ranker/pair-state.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -164,22 +170,12 @@ function selfCheck() {
 // ---------------------------------------------------------------------------
 // Per-scramble analysis
 // ---------------------------------------------------------------------------
-function analyzeScramble(scrambleStr) {
-  const { optimal, best } = recommend(scrambleStr);
-  const solution = best.base.map((t) => parseSolMove(t.trim())); // ranker's line, solving (z2) frame
-
-  // positions after the scramble, in the solving frame
-  const state = new Map(); // piece id -> current position
-  for (const p of PAIRS) {
-    state.set(p.corner, p.corner);
-    state.set(p.edge, p.edge);
-  }
-  for (const e of CROSS_EDGES) state.set(e, e);
-  for (const [face, power] of scrambleMovesInSolvingFrame(scrambleStr)) {
-    for (const [id, pos] of state) state.set(id, applyMove(pos, face, power));
-  }
-
-  // walk the solution counting disruptions per tracked piece
+// Apply a solution to a copy of the post-scramble position state, counting
+// disruptions per piece and asserting the cross ends home. Returns the per-pair
+// features. Runs once for the recommended line and, when the pair-aware pick
+// differs, once more for that line.
+function walkLine(startState, solution, lineLabel, scrambleStr) {
+  const state = new Map(startState);
   const disruptions = new Map([...state.keys()].map((id) => [id, 0]));
   for (const [face, power] of solution) {
     for (const [id, pos] of state) {
@@ -192,11 +188,11 @@ function analyzeScramble(scrambleStr) {
   // cross-validation: the 4 cross edges must be home again
   for (const e of CROSS_EDGES) {
     if (state.get(e) !== e) {
-      throw new Error(`cross not solved after solution! scramble="${scrambleStr}" edge ${e} at ${state.get(e)}`);
+      throw new Error(`cross not solved after ${lineLabel}! scramble="${scrambleStr}" edge ${e} at ${state.get(e)}`);
     }
   }
 
-  const pairs = PAIRS.map((p) => ({
+  return PAIRS.map((p) => ({
     slot: p.slot,
     colors: p.colors,
     cornerDisruptions: disruptions.get(p.corner),
@@ -206,6 +202,47 @@ function analyzeScramble(scrambleStr) {
     cornerFinal: state.get(p.corner),
     edgeFinal: state.get(p.edge),
   }));
+}
+
+function analyzeScramble(scrambleStr) {
+  const { optimal, best, pairAware } = recommendPairAware(scrambleStr);
+  const solution = best.base.map((t) => parseSolMove(t.trim())); // ranker's line, solving (z2) frame
+
+  // positions after the scramble, in the solving frame
+  const startState = new Map(); // piece id -> current position
+  for (const p of PAIRS) {
+    startState.set(p.corner, p.corner);
+    startState.set(p.edge, p.edge);
+  }
+  for (const e of CROSS_EDGES) startState.set(e, e);
+  for (const [face, power] of scrambleMovesInSolvingFrame(scrambleStr)) {
+    for (const [id, pos] of startState) startState.set(id, applyMove(pos, face, power));
+  }
+
+  const pairs = walkLine(startState, solution, 'the recommended line', scrambleStr);
+
+  // The pair-aware pick (mode toggle in the UI): same line unless a better pair
+  // outcome paid for its ergonomic cost. Its own pair features are tracked so
+  // the reveal describes the line actually shown in that mode.
+  const aware = {
+    differs: pairAware.differs,
+    slot: pairAware.slot,
+    category: pairAware.category,
+    premade: pairAware.premade,
+    ergonomicCategory: pairAware.ergonomicCategory,
+    holdColour: pairAware.holdColour,
+    ergo: Math.round(pairAware.ergo * 10) / 10,
+    displayMoves: pairAware.moves.map((s) => s.trim()).join(' '),
+    length: pairAware.length,
+    pairs: pairAware.differs
+      ? walkLine(
+          startState,
+          pairAware.base.map((t) => parseSolMove(t.trim())),
+          'the pair-aware line',
+          scrambleStr
+        )
+      : pairs,
+  };
 
   return {
     optimal,
@@ -217,6 +254,7 @@ function analyzeScramble(scrambleStr) {
     holdColour: best.holdColour,
     ergo: Math.round(best.ergo * 10) / 10,
     pairs,
+    aware,
   };
 }
 
@@ -314,11 +352,12 @@ const argVal = (flag) => {
 const featuresOut = argVal('--features-out');
 const emitTs = argVal('--emit-ts');
 const emitSolution = argVal('--emit-solution');
+const emitPairAware = argVal('--emit-pair-aware');
 const limit = Math.min(argVal('--limit') ? Number(argVal('--limit')) : 1000, 1000);
 const full = limit === 1000;
-if (!full && (emitTs || emitSolution)) {
+if (!full && (emitTs || emitSolution || emitPairAware)) {
   // A partial run must never overwrite the shipped data with a truncated file.
-  throw new Error('--limit is a smoke-test flag and cannot be combined with --emit-ts / --emit-solution');
+  throw new Error('--limit is a smoke-test flag and cannot be combined with the --emit-* flags');
 }
 
 const results = []; // [level-1][index] -> analysis
@@ -336,6 +375,9 @@ for (let level = 1; level <= 8; level++) {
     }
     if (a.solutionLength !== level && a.solutionLength !== level + 1) {
       throw new Error(`ergo line length ${a.solutionLength} out of range at level ${level} index ${i}`);
+    }
+    if (a.aware.length !== level && a.aware.length !== level + 1) {
+      throw new Error(`pair-aware line length ${a.aware.length} out of range at level ${level} index ${i}`);
     }
     bucket.push(a);
   }
@@ -416,7 +458,108 @@ if (emitSolution) {
   console.log(`solution module written to ${emitSolution}`);
 }
 
+// --- emit the shipped pair-aware module ----------------------------------------
+if (emitPairAware) {
+  const HOLDS = ['green', 'orange', 'blue', 'red'];
+
+  // 2 chars per scramble: featured slot (+4 if the pair was already connected
+  // after the scramble), then the category of the pair-aware line's best pair.
+  // Mirrors the decoder in src/app/pair-aware-solution.ts.
+  const metaFor = (aware) => {
+    const slotIdx = SLOTS.indexOf(aware.slot);
+    const catIdx = CATEGORIES.indexOf(aware.category);
+    if (slotIdx < 0 || catIdx < 0) throw new Error(`bad pair-aware meta ${aware.slot}/${aware.category}`);
+    return ALPHABET[slotIdx + (aware.premade ? 4 : 0)] + ALPHABET[catIdx];
+  };
+
+  const meta = results.map((bucket) => bucket.map((a) => metaFor(a.aware)));
+  const alternates = results.map((bucket) => {
+    const out = {};
+    bucket.forEach((a, i) => {
+      if (!a.aware.differs) return;
+      if (!HOLDS.includes(a.aware.holdColour)) throw new Error(`unexpected hold colour ${a.aware.holdColour}`);
+      if (!(a.aware.ergo > 0)) throw new Error(`bad pair-aware ergo ${a.aware.ergo}`);
+      if (!a.aware.displayMoves) throw new Error('empty pair-aware display moves');
+      const ergoCat = CATEGORIES.indexOf(a.aware.ergonomicCategory);
+      if (ergoCat < 0) throw new Error(`bad ergonomic category ${a.aware.ergonomicCategory}`);
+      out[i] = [a.aware.holdColour, a.aware.ergo, a.aware.displayMoves, encodePairs(a.aware.pairs), ALPHABET[ergoCat]];
+    });
+    return out;
+  });
+
+  // round-trip: meta decodes back to slot/premade/category, and the alternate
+  // lines' pair features decode back to what the tracker produced.
+  for (let level = 1; level <= 8; level++) {
+    for (let i = 0; i < 1000; i++) {
+      const aware = results[level - 1][i].aware;
+      const enc = meta[level - 1][i];
+      const s = ALPHABET.indexOf(enc[0]);
+      if (SLOTS[s % 4] !== aware.slot || s >= 4 !== aware.premade || CATEGORIES[ALPHABET.indexOf(enc[1])] !== aware.category) {
+        throw new Error(`pair-aware meta round-trip mismatch at level ${level} #${i}`);
+      }
+      const alt = alternates[level - 1][i];
+      if (aware.differs !== (alt !== undefined)) throw new Error(`alternate presence mismatch at level ${level} #${i}`);
+      if (alt) {
+        if (CATEGORIES[ALPHABET.indexOf(alt[4])] !== aware.ergonomicCategory) {
+          throw new Error(`ergonomic-category round-trip mismatch at level ${level} #${i}`);
+        }
+        const got = decodePairs(alt[3]);
+        for (let k = 0; k < 4; k++) {
+          for (const f of ['cornerDisruptions', 'edgeDisruptions', 'cornerLayer', 'edgeLayer']) {
+            if (aware.pairs[k][f] !== got[k][f]) {
+              throw new Error(`pair-aware features round-trip mismatch at level ${level} #${i} pair ${k} field ${f}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  console.log('pair-aware data round-trips for all 8000 scrambles');
+
+  const metaBody = meta
+    .map((bucket, i) => `\n// level ${i + 1}\n[\n${bucket.map((s) => `"${s}"`).join(',\n')}\n]`)
+    .join(',');
+  const altBody = alternates
+    .map(
+      (bucket, i) =>
+        `\n// level ${i + 1}\n{\n${Object.entries(bucket)
+          .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+          .join(',\n')}\n}`
+    )
+    .join(',');
+  writeFileSync(
+    emitPairAware,
+    `// GENERATED FILE - do not edit by hand.\n` +
+      `// Regenerate with: node scripts/analyze-pair-tracking.mjs --emit-pair-aware src/app/PairAwareSolutionData.ts\n` +
+      `//\n` +
+      `// The pair-aware cross recommendation (mode toggle), one meta entry per\n` +
+      `// scramble in Scrambles.ts plus a sparse per-level map of the lines that\n` +
+      `// differ from the ergonomic pick in CrossSolutionData.ts.\n` +
+      `//\n` +
+      `// meta: 2 chars — featured slot in FR,FL,BR,BL order (+4 if that pair was\n` +
+      `// already connected after the scramble), then the outcome category of the\n` +
+      `// pair-aware line's best pair. Alternate entries are\n` +
+      `// [holdColour, turnSpeed, moves, pairFeatures, ergonomicCategory]:\n` +
+      `// pairFeatures in the same encoding as PairTrackingData.ts, ergonomicCategory\n` +
+      `// the featured pair's fate under the ergonomic line (for the comparison row).\n` +
+      `// Decode with pairAwareSolutionFor() in pair-aware-solution.ts.\n` +
+      `export const pairAwareMeta: string[][] = [${metaBody}\n];\n\n` +
+      `export const pairAwareAlternates: { [index: number]: [string, number, string, string, string] }[] = [${altBody}\n];\n`
+  );
+  const nAlt = alternates.reduce((sum, b) => sum + Object.keys(b).length, 0);
+  console.log(`pair-aware module written to ${emitPairAware} (${nAlt} alternate lines across 8000 scrambles)`);
+}
+
 // --- report: the shipped model -------------------------------------------------
+console.log('\n=== pair-aware pick vs ergonomic pick ===');
+console.log('level | differs | premade-featured');
+for (let level = 1; level <= 8; level++) {
+  const bucket = results[level - 1];
+  const differs = bucket.filter((a) => a.aware.differs).length;
+  const premade = bucket.filter((a) => a.aware.premade).length;
+  console.log(`  ${level}   | ${String(differs).padStart(7)} | ${String(premade).padStart(16)}`);
+}
+
 console.log('\n=== scramble grade by level (filter: corner ends on top; bands 0-2 / 3-4 / 5+) ===');
 console.log('level |  easy | medium |  hard |  none');
 for (let level = 1; level <= 8; level++) {

@@ -29,6 +29,12 @@
         </div>
         <p class="solution-hold" *ngIf="solution">Hold <strong>{{holdColour}}</strong> in front, white on the bottom</p>
         <p class="solution-speed" *ngIf="solution">turn speed {{turnSpeed}} (lower is faster)<ng-container *ngIf="extraMove"> · one more than optimal</ng-container></p>
+        <p class="solution-pair-reason" *ngIf="solution && pairReason">
+            <strong>Pair-aware:</strong> {{pairReason}}<ng-container *ngIf="pairAwareSameLine"> · same line as the ergonomic pick</ng-container>
+        </p>
+        <p class="solution-compare" *ngIf="solution && pairCompare">
+            Ergonomic pick was <strong>{{pairCompare.moves}}</strong> (hold {{pairCompare.holdColour}}, speed {{pairCompare.turnSpeed}}) — this pair: {{pairCompare.outcome}}
+        </p>
         <div class="pair-reveal" *ngIf="pairReveal.length">
             <h3 class="pair-reveal-title">First pair tracking</h3>
             <details class="pair-reveal-details">

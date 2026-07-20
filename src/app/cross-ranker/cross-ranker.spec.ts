@@ -4,8 +4,9 @@
 
 import { cross } from '../cstimer/cross.js';
 import { distanceTable, enumerateSolutions, optimalLength, N_STATES } from './cross-states.js';
-import { rankSolutions, relabelForHold, recommend, FRONT_COLOURS, EXTRA_MOVE_MARGIN } from './cross-ranker.js';
+import { rankSolutions, relabelForHold, recommend, recommendPairAware, FRONT_COLOURS, EXTRA_MOVE_MARGIN, PAIR_WEIGHT } from './cross-ranker.js';
 import { selfCheck, crossSolved, crossEdgesAfterScramble, applyMove, parseMove } from './cube-tracker.js';
+import { selfCheck as pairSelfCheck, CATEGORIES, rankOf, stateAfterScramble, applyTokens, categorizeAll, bestRank } from './pair-state.js';
 import { scrambles } from '../Scrambles';
 
 const MoveNamesWCA = ["R", "R2", "R'", "B", "B2", "B'", "L", "L2", "L'", "F", "F2", "F'", "D", "D2", "D'", "U", "U2", "U'"];
@@ -134,5 +135,54 @@ describe('rankSolutions', () => {
     const holds = new Set(ranked.map((r: any) => r.holdColour));
     expect(holds.size).toBe(4);
     expect(new Set(ranked.map((r: any) => r.ergo)).size).toBeGreaterThan(1);
+  });
+});
+
+describe('recommendPairAware', () => {
+  it('passes the oriented tracker self-checks', () => {
+    expect(() => pairSelfCheck()).not.toThrow();
+  });
+
+  // The cube-verified founding case (docs/improvement-ideas.md §6): same three
+  // moves, and the order of the last two decides whether the already-connected
+  // blue-orange pair survives. The rescue is free — identical score.
+  it('rescues the pre-made pair on the verified level 3 #5 case, for free', () => {
+    const scramble = decodeScramble(scrambles[2][5]);
+    const { best, pairAware } = recommendPairAware(scramble);
+    expect(best.base.join(' ')).toBe("D' B2 L2");
+    expect(pairAware.base.join(' ')).toBe("D' L2 B2");
+    expect(pairAware.differs).toBe(true);
+    expect(pairAware.category).toBe('connected-U');
+    expect(pairAware.slot).toBe('BR');
+    expect(pairAware.premade).toBe(true);
+    expect(pairAware.score).toBeCloseTo(best.score, 5);
+  });
+
+  it('recommends a pair-aware line that actually solves the cross', () => {
+    for (const level of [2, 3, 4, 5]) {
+      const scramble = decodeScramble(scrambles[level - 1][7]);
+      const { optimal, pairAware } = recommendPairAware(scramble);
+      expect(pairAware.length).toBeLessThanOrEqual(optimal + 1);
+      expect(CATEGORIES).toContain(pairAware.category);
+      // the solver, independently
+      const combined = scramble + ' ' + toWcaFrame(pairAware.base).join(' ');
+      expect(cross.solve(combined)[1].length).withContext(`level ${level}`).toBe(0);
+    }
+  });
+
+  it('only deviates from the ergonomic pick when the pair outcome pays for it', () => {
+    for (const level of [3, 4, 5]) {
+      const scramble = decodeScramble(scrambles[level - 1][9]);
+      const { best, pairAware } = recommendPairAware(scramble);
+      if (pairAware.differs) {
+        // ties in the combined objective keep the ergonomic pick, so a switch
+        // means a strictly better pair category that more than covers the
+        // ergonomic sacrifice at PAIR_WEIGHT
+        const ergoRank = bestRank(categorizeAll(applyTokens(stateAfterScramble(scramble), best.base)));
+        const awareRank = rankOf[pairAware.category];
+        expect(awareRank).toBeLessThan(ergoRank);
+        expect(pairAware.score - best.score).toBeLessThan(PAIR_WEIGHT * (ergoRank - awareRank));
+      }
+    }
   });
 });

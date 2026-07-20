@@ -11,6 +11,7 @@ function aRecord(overrides: Partial<TrackingFeedbackRecord> = {}): TrackingFeedb
     bandFilter: 'hard',
     solutionRevealed: true,
     solutionMatch: null,
+    pairAware: false,
     scrambleIndex: 42,
     scramble: "R U R' F",
     ...overrides,
@@ -83,8 +84,8 @@ describe('TrackingFeedbackService', () => {
       service.record(aRecord({ solutionMatch: 'different' }));
       const [header, row, ...rest] = service.toCsv().split('\n');
 
-      expect(header).toBe('timestamp,rating,level,grade,bandFilter,solutionRevealed,solutionMatch,scrambleIndex,scramble');
-      expect(row).toBe('2026-07-16T10:00:00.000Z,too-hard,5,hard,hard,true,different,42,R U R\' F');
+      expect(header).toBe('timestamp,rating,level,grade,bandFilter,solutionRevealed,solutionMatch,pairAware,scrambleIndex,scramble');
+      expect(row).toBe('2026-07-16T10:00:00.000Z,too-hard,5,hard,hard,true,different,false,42,R U R\' F');
       expect(rest).toEqual([]);
     });
 
@@ -92,8 +93,17 @@ describe('TrackingFeedbackService', () => {
       service.record(aRecord({ solutionMatch: null }));
       const row = service.toCsv().split('\n')[1];
 
-      // ...,solutionRevealed,solutionMatch,scrambleIndex,... → the empty cell between true and 42
-      expect(row).toContain(',true,,42,');
+      // ...,solutionRevealed,solutionMatch,pairAware,scrambleIndex,... → the empty cell between true and false
+      expect(row).toContain(',true,,false,42,');
+    });
+
+    it('leaves the pairAware cell empty on rows recorded before the field existed', () => {
+      const legacy = aRecord();
+      delete (legacy as any).pairAware;
+      service.record(legacy);
+      const row = service.toCsv().split('\n')[1];
+
+      expect(row).toContain(',true,,,42,');
     });
 
     it('emits just the header when there is nothing recorded', () => {

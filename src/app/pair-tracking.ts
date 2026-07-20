@@ -50,7 +50,15 @@ const SLOT_COLORS: Record<string, string> = {
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef';
 
 export function decodePairFeatures(level: number, index: number): PairFeatures[] {
-  const enc = pairTrackingData[level - 1][index];
+  return decodePairFeaturesFrom(pairTrackingData[level - 1][index]);
+}
+
+/**
+ * Decode an encoded features string directly. The pair-aware mode ships its
+ * alternate lines' features in the same encoding (PairAwareSolutionData.ts), so
+ * the reveal can describe whichever line is actually shown.
+ */
+export function decodePairFeaturesFrom(enc: string): PairFeatures[] {
   const pairs: PairFeatures[] = [];
   for (let i = 0; i < 4; i++) {
     const c = ALPHABET.indexOf(enc[i * 2]);
